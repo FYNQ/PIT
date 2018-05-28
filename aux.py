@@ -1,8 +1,146 @@
 import os
+import subprocess
+import json
+import logging
 import sort_patches as sortp
-from os import listdir
 import patch
+import conf
 
+
+def setup_logger(logger_name, log_file, level=logging.INFO):
+    """Setup logger
+
+    :param path: path for loggfile output
+    :param level: logging level
+    :name: logfile name
+    :returns: logger reference
+    """
+    l = logging.getLogger(logger_name)
+    formatter = logging.Formatter('%(asctime)s : %(message)s')
+    fileHandler = logging.FileHandler(log_file, mode='w')
+    fileHandler.setFormatter(formatter)
+    streamHandler = logging.StreamHandler()
+    streamHandler.setFormatter(formatter)
+
+    l.setLevel(level)
+    l.addHandler(fileHandler)
+    l.addHandler(streamHandler)
+
+
+def load(fpath, f_suffix):
+    """Loads json file and return data
+
+    :param base: base path
+    :param fname: file name
+
+    :returns: Data or None if file not exists or json cannot be read
+    """
+
+    result = {}
+    f_lst = os.listdir(fpath)
+    for name in f_lst:
+        if name.startswith(f_suffix):
+            fname = fpath + '/' + name
+            with open(fname, 'r') as infile:
+                data = json.load(infile)
+            #f = open(fname)
+            #data = json.load(data)
+            result.update(data)
+
+    return result
+
+
+def do_cmd(cmd, path, logger):
+    """execute a subprocess command
+
+    :param cmd: command to execute
+    :param path: Directory where command has to be executed
+    :logger: For redirecting output to logger if logger != None
+    :returns: No return value
+    """
+    process = subprocess.Popen(cmd, cwd=path, shell=True,
+                               stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+
+    process.wait()
+    out, err = process.communicate()
+    res = out.decode("utf-8")
+    if logger != None:
+        if path != None:
+            logger.info("do cmd: %s in path: %s" % (cmd, path))
+        else:
+            logger.info("do cmd: %s" % (cmd))
+        logger.info(res)
+    else:
+        print("do cmd: %s in path: %s" % (cmd, path))
+
+
+    return res
+
+
+def get_commit_time_sec(tag, path):
+    """Get time in seconds when certain tag was created
+
+    :param tag: linux source tag
+    :param path: location path of source
+
+    :returns: time in seconds
+    """
+    cmd = "git log -1 --pretty=format:\"%ct\" " + tag
+    process = subprocess.Popen(cmd, cwd=path, shell=True,
+                                stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+
+    process.wait()
+    out, err = process.communicate()
+    t = int(out.decode('utf-8').rstrip('\n'))
+    return t/3600
+
+
+def git_make_fun_diff(linux_path, opath, f_tag, t_tag, line_start, line_end, \
+                                                            cu, fun, logger):
+
+    ofile = "%s/%s.diff" % (opath, fun)
+
+    if not os.path.isdir(opath):
+        os.makedirs(opath)
+
+    if not os.path.isfile(ofile):
+
+        cmd = ("git log %s..%s -L%d,%d:%s" %
+            (f_tag, t_tag, line_start, line_end, cu))
+        #print(cmd)
+        #r = do_cmd(cmd, linux_path, logger)
+        process = subprocess.Popen(cmd, cwd=linux_path, shell=True,
+                               stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+
+        process.wait()
+        out, err = process.communicate()
+
+        if out.decode('utf-8')  == "":
+            print("function: %s removed" % fun)
+            return True
+        else:
+            cmd = ("git log %s..%s -L%d,%d:%s > %s/%s.diff" %
+                    (f_tag, t_tag, line_start, line_end, cu, opath, fun))
+            print(cmd)
+            process = subprocess.Popen(cmd, cwd=linux_path, shell=True,
+                               stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            process.wait()
+            out, err = process.communicate()
+            return False
+
+
+
+def mk_git_diff_funs(linux_repo, path, tag, next_tag, funs, logger):
+    out_path = path + 'fun_diffs'
+    if not os.path.isdir(out_path):
+        os.makedirs(out_path)
+
+    for fun in funs.keys():
+        start = funs[fun]['start']
+        end = funs[fun]['end']
+        cu = funs[fun]['cu']
+        git_make_fun_diff(linux_repo, out_path, tag, next_tag,
+                                    start, end, cu, fun, logger)
 
 
 def get_hash(header):
