@@ -112,6 +112,7 @@ class worker:
         self.funs_cur_dict = {}
         self.funs_nex_dict = {}
         fun_diffs, funs, fun_moved, not_in_cur, not_in_nex = st.gen_fun_diffs(path_cur,
+
                                                        self.fun_src_cur,
                                                        self.fun_src_nex,
                                                        self.fun_decl_cur,
@@ -139,8 +140,12 @@ class worker:
                                                         self.logger)
 
         print("functions not in current")
-        self.not_found = self.create_diffs(conf.LINUX_SRC, not_in_cur,
-                                            'funs_not_found', tag_cur, tag_nex)
+        self.funs_nin_cur = self.create_diffs(conf.LINUX_SRC, not_in_cur,
+                                            'funs_nin_cur', tag_cur, tag_nex)
+        #self.funs_nin_nex = self.create_diffs(conf.LINUX_SRC, not_in_nex,
+        #                                    'funs_nin_nex', tag_cur, tag_nex)
+
+
         print("functions moved")
         self.moved = self.create_diffs(conf.LINUX_SRC, fun_moved,
                                             'funs_moved', tag_cur, tag_nex)
@@ -149,7 +154,7 @@ class worker:
         self.format_patches = aux.get_patches_fp(path_cur + 'diffs/')
         self.fun_patches = aux.get_patches(path_cur + 'fun_diffs/')
         self.cu_patches = aux.get_patch_lst_by_cu(path_cur + 'diffs/')
-        self.fun_patches_nf = aux.get_patches(path_cur + 'funs_not_found/')
+        self.fun_patches_nf = aux.get_patches(path_cur + 'funs_nin_cur/')
         self.fun_patches_mv = aux.get_patches(path_cur + 'funs_moved/')
 
 
@@ -250,51 +255,80 @@ class worker:
         return result, l_insn_add, l_insn_rm, commits_app
 
 
+    def decl_in_patch(self, data, cu, hunk_text):
+        for fun in data[cu].keys():
+            decl = data[cu][fun]['src']
+            for line in hunk_text:
+                if decl[0] in line[1:].rstrip('\n'):
+                    print("Found decl %s of fun: %s" % (decl, fun))
+                    return decl
+        return None
+
     def check_not_in_cur(self, data, patch_data):
         not_found = {}
         not_found_by_cu = {}
         found = {}
+        added = {}
         for cu in data.keys():
             for fun in data[cu]:
+                flag = False
                 if fun in patch_data:
                     patch = patch_data[fun]
-                    decl = self.fun_decl_nex[cu][fun]['src']
+                    decl_nex = self.fun_decl_nex[cu][fun]['src']
                     for item in patch.items:
                         for hunk in item.hunks:
                             ht = st.hunk_decode(hunk)
-                            if fun == 'blkdev_roset':
+                            if fun == '__spi_register_driver':
                                 print("x: %s" % ht[3].rstrip('\n'))
-                                print("__: %s" % decl[0] == ht[3].rstrip('\n'))
-                                print("D: |%s|" % decl[0])
+                                print("__: %s" % decl_nex[0] == ht[3].rstrip('\n'))
+                                print("D: |%s|" % decl_nex[0])
                                 for i in ht:
                                     print(i)
 
                             for line in ht:
-                                if decl[0] == line[1:].rstrip('\n') :
+                                if decl_nex[0] == line[1:].rstrip('\n') :
                                     hunkfind = [x[1:].rstrip(b"\r\n")
                                             for x in hunk.text if x[0] in b" -"]
                                     hunkreplace = [x[1:].rstrip(b"\r\n")
                                             for x in hunk.text if x[0] in b" + "]
                                     print("function %s in hunk add" % fun)
-                                    if not cu in found.keys():
-                                        found.update({cu:{}})
-                                    if fun not in found[cu].keys():
-                                        found[cu].update({fun:{
-                                                          'decl': decl,
+                                    r = self.decl_in_patch(self.fun_decl_cur,
+                                                                        cu, ht)
+                                    flag = True
+                                    if r != None:
+                                        if not cu in found.keys():
+                                            found.update({cu:{}})
+                                        if fun not in found[cu].keys():
+                                            found[cu].update({fun:[]})
+                                        found[cu][fun].append({
+                                                          'decl_nex': decl_nex,
+                                                          'patch': patch,
                                                           'htext': ht,
                                                           'hfind': hunkfind,
-                                                          'hreplace':hunkreplace}})
+                                                          'hreplace':hunkreplace})
+                                    else:
+                                        if not cu in added.keys():
+                                            added.update({cu:{}})
+                                        if fun not in added[cu].keys():
+                                            added[cu].update({fun:[]})
+                                        added[cu][fun].append({
+                                                          'decl_nex': decl_nex,
+                                                          'patch': patch,
+                                                          'htext': ht,
+                                                          'hfind': hunkfind,
+                                                          'hreplace':hunkreplace})
 
 
-                                elif decl[0] in hunk.text:
-                                    print("------------------XXXX")
+                    if flag == False:
+                        if not cu in not_found.keys():
+                            not_found.update({cu:{}})
+                        if not fun in not_found[cu]:
+                            not_found[cu].update({fun: {'decl_nex': decl_nex,
+                                                        'patch': patch}})
+                else:
+                    print("---> No patch for fun: %s available" % fun)
 
-                if not cu in not_found.keys():
-                    not_found.update({cu:{}})
-                if not fun in not_found[cu]:
-                    not_found[cu].update({fun: {'decl': decl, 'patch': patch}})
-
-        return found, not_found
+        return found, added, not_found
 
 
     def cnt_funs(self, data):
@@ -308,7 +342,11 @@ path_cur = '/home/markus/work_ot/PIT/build/v4.3/ppc_men_defconfig/'
 path_nex = '/home/markus/work_ot/PIT/build/v4.4-rc1/ppc_men_defconfig/'
 
 a = worker(path_cur, path_nex, 'v4.3', 'v4.4-rc1', 'ppc')
-res, n_res = a.check_not_in_cur(a.not_in_cur, a.fun_patches_nf)
+res, added, n_res = a.check_not_in_cur(a.not_in_cur, a.fun_patches_nf)
+
+print("Res  : %d" % a.cnt_funs(res))
+print("Added: %d" % a.cnt_funs(added))
+print("N Res: %d" % a.cnt_funs(n_res))
 
 #resolved = a.res_unresolved(a.not_resolved, a.cu_patches)
 #not_resolved = a.collect_unresolved(a.not_resolved)
