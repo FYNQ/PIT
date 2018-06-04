@@ -66,6 +66,12 @@ class worker:
         if not os.path.exists(path_cur + '/debug_data'):
             os.makedirs(path_cur + '/debug_data')
 
+
+        self.l_insn_add_t = 0
+        self.l_insn_rm_t = 0
+        self.l_insn_add_f = 0
+        self.l_insn_rm_f = 0
+
         logger_name = "checker_%s" % tag_cur
         aux.setup_logger(logger_name, path_cur + "/check_series.log")
         self.logger = logging.getLogger(logger_name)
@@ -155,22 +161,22 @@ class worker:
         self.fun_patches = aux.get_patches(path_cur + 'fun_diffs/')
         self.cu_patches = aux.get_patch_lst_by_cu(path_cur + 'diffs/')
         self.fun_patches_nf = aux.get_patches(path_cur + 'funs_nin_cur/')
-        self.fun_patches_mv = aux.get_patches(path_cur + 'funs_moved/')
+#        self.fun_patches_mv = aux.get_patches(path_cur + 'funs_moved/')
 
 
     def get_mod_diff(self):
-        l_insn_add = 0
-        l_insn_rm = 0
         l_struct_add = 0
         l_struct_rm = 0
-        commits_insn_applied = 0
+        commits_insn_applied = []
         tag_date = aux.get_commit_time_sec(self.tag_cur, conf.LINUX_SRC)
 
-
         self.logger.info("Get function diffs ...")
-        res_fun, l_a, l_r, commits_fun = self.get_mod_in_fun(self.fun_diffs)
-        l_insn_add += l_a
-        l_insn_rm += l_r
+        res_fun, l_a_t, l_r_t, l_a_f, l_r_f, commits_fun = self.get_mod_in_fun(self.fun_diffs)
+        self.l_insn_add_t += l_a_t
+        self.l_insn_rm_t += l_r_t
+        self.l_insn_add_f += l_a_f
+        self.l_insn_rm_f += l_r_f
+
         for commit in commits_fun:
             if commit not in commits_insn_applied:
                 self.commits_insn_applied.append(commit)
@@ -217,8 +223,11 @@ class worker:
 
         """
         result = {}
-        l_insn_add = 0
-        l_insn_rm = 0
+        l_insn_add_t = 0
+        l_insn_rm_t = 0
+        l_insn_add_f = 0
+        l_insn_rm_f = 0
+
         h_insn_tot = 0
         h_insn_app = 0
         commits_app = []
@@ -231,7 +240,7 @@ class worker:
                 print("Missing fun diff: %s" % fun)
                 continue
             else:
-                res, l_add, l_rm, commits = st.get_mod_fun(fun,
+                res, l_add_t, l_rm_t, l_add_f, l_rm_f,commits = st.get_mod_fun(fun,
                                                         self.insns_cur,
                                                         self.insns_nex,
                                                         self.parsed_cur,
@@ -249,10 +258,12 @@ class worker:
                 if i not in commits_app:
                     commits_app.append(i)
 
-            l_insn_add += l_add
-            l_insn_rm += l_rm
+            l_insn_add_t += l_add_t
+            l_insn_rm_t += l_rm_t
+            l_insn_add_f += l_add_f
+            l_insn_rm_f += l_rm_f
 
-        return result, l_insn_add, l_insn_rm, commits_app
+        return result, l_insn_add_t, l_insn_rm_t, l_insn_add_f, l_insn_rm_f,commits_app
 
 
     def decl_in_patch(self, data, cu, hunk_text):
@@ -347,6 +358,8 @@ res, added, n_res = a.check_not_in_cur(a.not_in_cur, a.fun_patches_nf)
 print("Res  : %d" % a.cnt_funs(res))
 print("Added: %d" % a.cnt_funs(added))
 print("N Res: %d" % a.cnt_funs(n_res))
+
+a.get_mod_diff()
 
 #resolved = a.res_unresolved(a.not_resolved, a.cu_patches)
 #not_resolved = a.collect_unresolved(a.not_resolved)
