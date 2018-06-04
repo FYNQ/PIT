@@ -176,8 +176,11 @@ def get_mod_fun(fun, insn_cur, insn_next, insn_pre_cur, insn_pre_next,
 
     """
 
-    l_cnt_add = 0
-    l_cnt_rm = 0
+    l_cnt_add_t = 0
+    l_cnt_rm_t= 0
+    l_cnt_add_f = 0
+    l_cnt_rm_f = 0
+
     result = {}
     commits = []
     pp = pprint.PrettyPrinter(indent=4)
@@ -196,8 +199,12 @@ def get_mod_fun(fun, insn_cur, insn_next, insn_pre_cur, insn_pre_next,
         if res == None:
             continue
         #print("RES: %s" % str(res))
-        l_cnt_add += len(res['add'])
-        l_cnt_rm += len(res['rm'])
+        l_cnt_add_t += res['add_cnt_t']
+        l_cnt_rm_t += res['rm_cnt_t']
+
+        l_cnt_add_f += res['add_cnt_f']
+        l_cnt_rm_f += res['rm_cnt_f']
+
         commits.append(commit)
 
         if not fun in result.keys():
@@ -205,40 +212,50 @@ def get_mod_fun(fun, insn_cur, insn_next, insn_pre_cur, insn_pre_next,
 
         result[fun].append(res)
 
-    return result, l_cnt_add, l_cnt_rm, commits
+    return result, l_cnt_add_t, l_cnt_rm_t, l_cnt_add_f, l_cnt_rm_f, commits
 
 
-def compare_lines(start, end, d_data, p_data, insns, insns_pre):
-    line_cnt = 0
+def line_skip(l):
+    line = l[1]
+    if line == '' or line.startswith('*') or line.startswith('/*') or \
+        line.startswith('}'):
+        return True
+    else:
+        return False
+
+
+def compare_lines(start, end, d_data, p_data, insns, insns_pre, op, ldbg):
+    line_cnt_false = 0
+    line_cnt_true = 0
     line_data = []
     found = False
     idx = 0
-    idx_p = 0
-    do = False
 
     for i, line in enumerate(d_data):
         loc = start + i
+        # and now iterate over patch info
+        for j, s_line in enumerate(p_data[idx:]):
+            if ldbg == True:
+                print(s_line)
+            pos = start + line[0] - 1
+            if line[1] in s_line:
+                if pos in insns or pos in insns_pre:
+                    print("%s:T:%d:%s|" % (op, pos,line[1]))
+                    idx = j
+                    line_data.append((pos, True))
+                    line_cnt_true += 1
+                    break
+                else:
+                    skip = line_skip(line)
+                    if skip == True:
+                        continue
+                    if not any(pos in ld for ld in line_data):
+                        print("%s:F:%d:%s|" % (op, pos,line[1]))
+                        idx = j
+                        line_data.append((pos, False))
+                        line_cnt_false += 1
 
-        if 1 == 1:
-            # and now iterate over patch info
-            for j, s_line in enumerate(p_data[idx_p:]):
-                #if dbg == True:
-                #    print("s_line: %s LOC: %d" % (s_line, loc))
-
-                pos = start + line[0] - 1
-                if line[1] in s_line:
-                    if pos in insns or pos in insns_pre:
-                    #if 1 == 1:
-                        idx = i
-                        idx_p = j
-                        line_data.append(pos)
-                        line_cnt += 1
-                        break
-        else:
-            print("home: %d" % loc)
-        #    return None, 0
-
-    return line_data, line_cnt
+    return line_data, line_cnt_true, line_cnt_false
 
 
 
@@ -246,57 +263,71 @@ def check_patch(fun, insn_cur, insn_next, insn_pre_cur, insn_pre_next,
                                 hunk, diff, commit):
     commits = []
     it = None
-
-    #if diff['modified'] != 'changed':
-    #    return None
-    #print(diff)
-
+    ldbg = False
     start_cur = diff["info_cur"]["start"]
     start_next = diff["info_next"]["start"]
     end_cur = diff["info_cur"]["end"]
     end_next = diff["info_next"]["end"]
     cu = diff["cu"]
+    print("******************************************")
     if fun in validation.funs:
         print("\n\n**-------------------------------------------")
         print("cur  start: %d end: %d" % (start_cur, end_cur))
         print("next start: %d end: %d" % (start_next, end_next))
         print("cu: %s" % cu)
-        print("****")
 
     l_add = []
     l_rm = []
     lines_add = []
     lines_rm = []
+    l_cnt_add_t = 0
+    l_cnt_rm_t = 0
+    l_cnt_add_f = 0
+    l_cnt_rm_f = 0
+
 
     add, rm, hunk_len = get_hunk_text(hunk)
+
     if fun in validation.funs:
-        print("\n\nhunk add:%d rm %d" % (len(add), len(rm)))
+        print("function: %s" % fun)
 
     if len(add) > 0:
+        print("-------------------------------------------")
         data = diff['data']['+']
-        lines_add, l_cnt_add = compare_lines(start_next, end_next,
+        lines_add, l_cnt_add_t, l_cnt_add_f  = compare_lines(start_next, end_next,
                                              data, add,
                                              insn_next[cu + '.stmt'],
-                                             insn_pre_next[cu + '.pre'])
+                                             insn_pre_next[cu + '.pre'], '+', ldbg)
 
     if len(rm) > 0:
+        print("-------------------------------------------")
         data = diff['data']['-']
-        lines_rm, l_cnt_rm = compare_lines(start_cur, end_cur,
+        lines_rm, l_cnt_rm_t, l_cnt_rm_f = compare_lines(start_cur, end_cur,
                                            data, rm,
                                            insn_cur[cu + '.stmt'],
-                                           insn_pre_cur[cu + '.pre'])
+                                           insn_pre_cur[cu + '.pre'], '-', ldbg)
 
-    if len(lines_rm) > 0 or len(lines_add) > 0:
+    if l_cnt_rm_t > 0 or l_cnt_add_t > 0 or \
+        l_cnt_rm_f > 0 or l_cnt_add_f > 0:
+        print('-------------------------------------------------')
+        print("cu: %s" % cu)
+        print("fun: %s" % fun)
+        print("commit: %s\n\n******" % commit)
+
         if commit not in commits:
             commits.append(commit)
+
 
         it = {'fun': fun,
               'cu': cu,
               'commit': commit,
-              'add_tot': len(add),
-              'rm_tot': len(rm),
-              'add': lines_add,
-              'rm': lines_rm}
+              'add_cnt_t': l_cnt_add_t,
+              'add_cnt_f': l_cnt_add_f,
+              'rm_cnt_t': l_cnt_rm_t,
+              'rm_cnt_f': l_cnt_rm_f,
+              'lines_add': lines_add,
+              'lines_rm': lines_rm}
+
 
         if 'ren_name' in diff.keys():
             it[found].update({'ren_name': diff['ren_name']})
@@ -306,12 +337,8 @@ def check_patch(fun, insn_cur, insn_next, insn_pre_cur, insn_pre_next,
                 print("\ncu: %s fun: %s\n" % (cu, fun))
                 pp.pprint(it)
                 print("\n")
-    else:
-        print("No lines added or removed!")
-        print("DATA ADD: %s" % add)
-        print("DATA RM : %s" % rm)
-
-    dbg = False
+    # else:
+    # Todo: check else path
 
     return it
 
@@ -364,8 +391,8 @@ def gen_fun_diffs(path, src_cur, src_next, decl_cur, decl_next,
     # check cu and function is available in next
     for cu in src_cur.keys():
         for fun in src_cur[cu]:
+            #print("create diff function:%s" % fun)
             state = None
-            #if fun == 'sbi_ui_show':
             info = src_cur[cu][fun]["info"]
             if cu in src_next.keys():
                 cur_src = src_cur[cu][fun]["src"]
@@ -377,7 +404,6 @@ def gen_fun_diffs(path, src_cur, src_next, decl_cur, decl_next,
                 else:
                     # check if function has been moved to other cu
                     fun_mov = fun_exists(funs_next, fun)
-
                     # seems function removed or renamed
                     if fun_mov == None:
                         next_src = []
@@ -392,7 +418,7 @@ def gen_fun_diffs(path, src_cur, src_next, decl_cur, decl_next,
                                                   'start': fun_info_cur['start'],
                                                   'end': fun_info_cur['end']}})
 
-                        print("fun %s in file:%s removed or refactored" %
+                        print("fun %s in file: %s removed or refactored" %
                                                                 (fun, cu))
                         continue
                     else:
@@ -410,7 +436,6 @@ def gen_fun_diffs(path, src_cur, src_next, decl_cur, decl_next,
                         add, rm = get_diff(cur_src, next_src)
                         print("fun %s moved to: %s" % (fun, fun_mov))
                         state = 'mov'
-
 
                 if len(add) > 0 or len(rm) > 0:
                     #dump_diff(out_path + fun + '_diff', cu, add, rm)
