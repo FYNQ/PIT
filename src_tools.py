@@ -235,12 +235,12 @@ def compare_lines(start, end, d_data, p_data, insns, insns_pre, op, ldbg):
         loc = start + i
         # and now iterate over patch info
         for j, s_line in enumerate(p_data[idx:]):
-            if ldbg == True:
-                print(s_line)
+            #if ldbg == True:
+            #    print(s_line)
             pos = start + line[0] - 1
             if line[1] in s_line:
                 if pos in insns or pos in insns_pre:
-                    print("%s:T:%d:%s|" % (op, pos,line[1]))
+                    #print("%s:T:%d:%s|" % (op, pos,line[1]))
                     idx = j
                     line_data.append((pos, True))
                     line_cnt_true += 1
@@ -250,7 +250,7 @@ def compare_lines(start, end, d_data, p_data, insns, insns_pre, op, ldbg):
                     if skip == True:
                         continue
                     if not any(pos in ld for ld in line_data):
-                        print("%s:F:%d:%s|" % (op, pos,line[1]))
+                        #print("%s:F:%d:%s|" % (op, pos,line[1]))
                         idx = j
                         line_data.append((pos, False))
                         line_cnt_false += 1
@@ -269,12 +269,6 @@ def check_patch(fun, insn_cur, insn_next, insn_pre_cur, insn_pre_next,
     end_cur = diff["info_cur"]["end"]
     end_next = diff["info_next"]["end"]
     cu = diff["cu"]
-    print("******************************************")
-    if fun in validation.funs:
-        print("\n\n**-------------------------------------------")
-        print("cur  start: %d end: %d" % (start_cur, end_cur))
-        print("next start: %d end: %d" % (start_next, end_next))
-        print("cu: %s" % cu)
 
     l_add = []
     l_rm = []
@@ -285,14 +279,18 @@ def check_patch(fun, insn_cur, insn_next, insn_pre_cur, insn_pre_next,
     l_cnt_add_f = 0
     l_cnt_rm_f = 0
 
+    if VALIDATE == True:
+        ldbg = True
 
     add, rm, hunk_len = get_hunk_text(hunk)
 
     if fun in validation.funs:
-        print("function: %s" % fun)
+        print('-------------------------------------------------')
+        print("cu: %s" % cu)
+        print("fun: %s" % fun)
+        print("commit: %s\n" % commit)
 
     if len(add) > 0:
-        print("-------------------------------------------")
         data = diff['data']['+']
         lines_add, l_cnt_add_t, l_cnt_add_f  = compare_lines(start_next, end_next,
                                              data, add,
@@ -300,7 +298,6 @@ def check_patch(fun, insn_cur, insn_next, insn_pre_cur, insn_pre_next,
                                              insn_pre_next[cu + '.pre'], '+', ldbg)
 
     if len(rm) > 0:
-        print("-------------------------------------------")
         data = diff['data']['-']
         lines_rm, l_cnt_rm_t, l_cnt_rm_f = compare_lines(start_cur, end_cur,
                                            data, rm,
@@ -309,10 +306,6 @@ def check_patch(fun, insn_cur, insn_next, insn_pre_cur, insn_pre_next,
 
     if l_cnt_rm_t > 0 or l_cnt_add_t > 0 or \
         l_cnt_rm_f > 0 or l_cnt_add_f > 0:
-        print('-------------------------------------------------')
-        print("cu: %s" % cu)
-        print("fun: %s" % fun)
-        print("commit: %s\n\n******" % commit)
 
         if commit not in commits:
             commits.append(commit)
@@ -334,9 +327,8 @@ def check_patch(fun, insn_cur, insn_next, insn_pre_cur, insn_pre_next,
 
         if VALIDATE == True:
             if fun in validation.funs:
-                print("\ncu: %s fun: %s\n" % (cu, fun))
                 pp.pprint(it)
-                print("\n")
+                print('-------------------------------------------------')
     # else:
     # Todo: check else path
 
@@ -471,7 +463,7 @@ def gen_fun_diffs(path, src_cur, src_next, decl_cur, decl_next,
 
     for cu in src_next.keys():
         if cu in src_cur.keys():
-            for fun in src_next[cu]:
+            for fun in src_next[cu].keys():
                 if not fun in src_cur[cu].keys():
                     if not cu in not_in_cur.keys():
                         not_in_cur.update({cu:{}})
