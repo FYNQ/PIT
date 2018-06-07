@@ -154,7 +154,7 @@ def get_hunk_text(hunk):
 
 
 def get_mod_fun(fun, insn_cur, insn_next, insn_pre_cur, insn_pre_next,
-                                            diffs, patches):
+                                            diff, patches):
 
     """Get which patch modified a function
 
@@ -194,7 +194,7 @@ def get_mod_fun(fun, insn_cur, insn_next, insn_pre_cur, insn_pre_next,
         cu_name = '/'.join(tname. split('/')[1:])
         commit = aux.get_hash(patch_it.header)
         res = check_patch(fun, insn_cur, insn_next, insn_pre_cur, insn_pre_next,
-                                        patch_it.hunks[0], diffs, commit)
+                                        patch_it.hunks[0], diff, commit)
 
         if res == None:
             continue
@@ -334,8 +334,10 @@ def check_patch(fun, insn_cur, insn_next, insn_pre_cur, insn_pre_next,
 
     return it
 
+#def get_fun_diff(src_cur, src_nex, insn_cur, insn_next,
+#                                    insn_pre_cur, insn_pre_nex):
 
-def gen_fun_diffs(path, src_cur, src_next, decl_cur, decl_next):
+def gen_funs_diff(path, src_cur, src_next, decl_cur, decl_next):
     """Generate diff for used functions
 
     :param path: base path, used for debug output into current work directory
@@ -396,8 +398,6 @@ def gen_fun_diffs(path, src_cur, src_next, decl_cur, decl_next):
                                                   'start': fun_info_cur['start'],
                                                   'end': fun_info_cur['end']}})
 
-                        print("fun %s in file: %s removed or refactored" %
-                                                                (fun, cu))
                         continue
                     else:
                         fun_info_moved = src_next[fun_mov][fun]['info']
