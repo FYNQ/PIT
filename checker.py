@@ -134,7 +134,6 @@ class worker:
 
         self.logger.info("Create function diffs!\n")
         diff_jobs = []
-        i = 0
         print("functions total %d "  % len(funs))
 
         #aux.mk_git_diff_funs(conf.LINUX_SRC, path_cur, tag_cur, tag_nex, funs,
@@ -157,16 +156,28 @@ class worker:
         self.cu_patches = aux.get_patch_lst_by_cu(path_cur + 'diffs/')
         self.fun_patches_nf = aux.get_patches(path_cur + 'funs_nin_cur/')
 #        self.fun_patches_mv = aux.get_patches(path_cur + 'funs_moved/')
-        self.get_mod_diff(fun_diffs)
+
+        ren, added, not_res = self.check_not_in_cur(n_in_cur, self.fun_patches_nf)
+        self.get_stats(fun_diffs, ren, added)
+        self.added = added
+        self.ren = ren
+        print("Renamed  : %d" % self.cnt_funs(ren))
+        print("Added: %d" % self.cnt_funs(added))
+        print("N Res: %d" % self.cnt_funs(not_res))
 
 
-    def get_mod_diff(self, data):
+        #print_added(added)
+        #print_renamed(renamed)
+
+
+
+    def get_stats(self, data, renamed, added):
         l_struct_add = 0
         l_struct_rm = 0
         commits_insn_applied = []
         tag_date = aux.get_commit_time_sec(self.tag_cur, conf.LINUX_SRC)
 
-        self.logger.info("Get function diffs ...\n")
+        self.logger.info("Get stats for function diffs ...\n")
         r_fun, l_a_t, l_r_t, l_a_f, l_r_f, shas_fun = self.get_mod_in_fun(data)
         self.l_insn_add_t += l_a_t
         self.l_insn_rm_t += l_r_t
@@ -177,6 +188,7 @@ class worker:
             if commit not in commits_insn_applied:
                 self.commits_insn_applied.append(commit)
 
+        self.logger.info("Get stats for added functions ...\n")
 
 
     def create_diffs(self, git_linux, data, path, tag_cur, tag_nex):
@@ -195,6 +207,44 @@ class worker:
 
         return l
 
+    def get_pre_data(self, data, start, end):
+        s = -1
+        e = -1
+        for n,i in enumerate(data):
+            if i >= start and s == -1:
+                s = n
+            if i > end and e == -1:
+                e = n - 1
+        if s != -1 and e != -1:
+            return data[s:e]
+        else:
+            return None
+
+    def get_mod_in_added(self, data):
+        l_add = 0
+        commits = []
+        for cu in data:
+            for fun in data[cu]:
+                it = data[cu][fun]
+                print("-----------------------------------")
+                print("Function: %s" % fun)
+                print("Patch   : %s" % it['pname'])
+                print("File    : %s" % cu)
+                start = self.fun_def_len_nex[cu + '.fl'][fun]['start']
+                end = self.fun_def_len_nex[cu + '.fl'][fun]['end']
+                parsed = sorted(self.parsed_nex[cu + '.pre'])
+                pre_data = self.get_pre_data(parsed, start, end)
+                if pre_data == None:
+                    print("Missing parse info !! ")
+                else:
+                    added = len(pre_data)
+                    l_add += added
+                    if it['commit'] not in commits:
+                        commits.append(it['commit'])
+
+                    print("Added   : %d" % added)
+
+        return added, commits
 
     def get_mod_in_fun(self, diffs):
         """ Get modification between two versions of a function.
@@ -283,6 +333,12 @@ class worker:
                 if fun in patch_data:
                     patch = patch_data[fun]
                     decl_nex = self.fun_decl_nex[cu][fun]['src']
+                    body_start = self.fun_def_len_nex[cu+'.fl'][fun]['start']
+                    body_end = self.fun_def_len_nex[cu+'.fl'][fun]['end']
+                    if body_start == body_end:
+                        print("+++> Fun: %s seems to be define macro" % fun)
+                        continue
+
                     commit = aux.get_hash(patch.items[0].header)
                     for item in patch.items:
                         for hunk in item.hunks:
@@ -318,6 +374,7 @@ class worker:
                                                           'decl_old': r,
                                                           'fun_old': fun_o,
                                                           'patch': patch,
+                                                          'commit':commit,
                                                           'cu': cu,
                                                           'pname':patch_name,
                                                           'htext': ht,
@@ -332,6 +389,7 @@ class worker:
                                                           'decl_nex': decl_nex,
                                                           'patch': patch,
                                                           'pname':patch_name,
+                                                          'commit':commit,
                                                           'htext': ht,
                                                           'hfind': hunkfind,
                                                           'hreplace':hunkreplace}})
@@ -399,15 +457,6 @@ path_cur = '/home/markus/work_ot/PIT/build/v4.3/ppc_men_defconfig/'
 path_nex = '/home/markus/work_ot/PIT/build/v4.4-rc1/ppc_men_defconfig/'
 
 a = worker(path_cur, path_nex, 'v4.3', 'v4.4-rc1', 'ppc')
-renamed, added, n_res = a.check_not_in_cur(a.not_in_cur, a.fun_patches_nf)
-
-print("Renamed  : %d" % a.cnt_funs(renamed))
-print("Added: %d" % a.cnt_funs(added))
-print("N Res: %d" % a.cnt_funs(n_res))
-
-
-#print_added(added)
-print_renamed(renamed)
 
 #format_patches = aux.get_patches_fp(ppath + 'diffs/')
 
