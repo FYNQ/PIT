@@ -7,6 +7,7 @@ import src_tools as st
 
 ppath = '/home/markus/work_ot/PIT/build/v4.3/ppc_men_defconfig/'
 
+import validation
 
 
 # get hunks applied
@@ -111,15 +112,11 @@ class worker:
                         (tag_cur, self.cnt_funs(self.fun_src_cur)))
         self.logger.info("function in tag %s: %d\n" %
                         (tag_nex, self.cnt_funs(self.fun_src_nex)))
-        self.funs_cur_dict = {}
-        self.funs_nex_dict = {}
         fun_diffs, funs, fun_mv, n_in_cur, n_in_nex = st.gen_fun_diffs(path_cur,
                                                        self.fun_src_cur,
                                                        self.fun_src_nex,
                                                        self.fun_decl_cur,
-                                                       self.fun_decl_nex,
-                                                       self.funs_cur_dict,
-                                                       self.funs_nex_dict)
+                                                       self.fun_decl_nex)
 
         self.logger.info("function not in current %d\n" %
                         (self.cnt_funs(n_in_cur)))
@@ -165,8 +162,9 @@ class worker:
         print("Added: %d" % self.cnt_funs(added))
         print("N Res: %d" % self.cnt_funs(not_res))
 
+        if conf.VALIDATION == True:
+            validation.print_val_added(added)
 
-        #print_added(added)
         #print_renamed(renamed)
 
 

@@ -335,8 +335,7 @@ def check_patch(fun, insn_cur, insn_next, insn_pre_cur, insn_pre_next,
     return it
 
 
-def gen_fun_diffs(path, src_cur, src_next, decl_cur, decl_next,
-                                    funs_in_cur_d, funs_in_nex_d):
+def gen_fun_diffs(path, src_cur, src_next, decl_cur, decl_next):
     """Generate diff for used functions
 
     :param path: base path, used for debug output into current work directory
@@ -366,19 +365,6 @@ def gen_fun_diffs(path, src_cur, src_next, decl_cur, decl_next,
     fun_moved = {}
 
     funs_next = {}
-    # build dict of cu with list of funs_in_cur
-    for cu in src_next.keys():
-        if not cu in funs_in_nex.keys():
-            funs_in_nex_d.update({cu:[]})
-        for fun in src_next[cu]:
-            funs_in_nex_d[cu].append(fun)
-
-    for cu in src_cur.keys():
-        if not cu in funs_in_cur.keys():
-            funs_in_cur_d.update({cu:[]})
-        for fun in src_cur[cu]:
-            funs_in_cur_d[cu].append(fun)
-
 
     # check cu and function is available in next
     for cu in src_cur.keys():
