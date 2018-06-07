@@ -1,5 +1,7 @@
 import os
 import subprocess
+import mmap
+
 import json
 import logging
 import sort_patches as sortp
@@ -77,6 +79,25 @@ def do_cmd(cmd, path, logger):
     return res
 
 
+def find_in_file(fname, commit):
+    with open(fname, 'rb', 0) as file, \
+        mmap.mmap(file.fileno(), 0, access=mmap.ACCESS_READ) as s:
+        search_term = str.encode(commit)
+        if s.find(search_term) != -1:
+            return True
+    return False
+
+
+def find_commit(path, commit):
+    files = os.listdir(path + '/')
+    for fname in files:
+        ret = find_in_file(path + '/' + fname, commit)
+        if ret is True:
+            return fname
+
+    return False
+
+
 def get_commit_time_sec(tag, path):
     """Get time in seconds when certain tag was created
 
@@ -139,6 +160,7 @@ def mk_git_diff_funs(linux_repo, path, tag, next_tag, funs, logger):
         start = funs[fun]['start']
         end = funs[fun]['end']
         cu = funs[fun]['cu']
+        #print('create git diff for function: %s' % fun)
         git_make_fun_diff(linux_repo, out_path, tag, next_tag,
                                     start, end, cu, fun, logger)
 
