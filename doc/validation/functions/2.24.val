@@ -1,0 +1,152 @@
+
+PIT Validation setup - fun: mmc_send_tuning
+
+Author: Markus Kreidl
+Review: Reviewer (if applicable else ----)
+Date: 2018-05-30
+Expires: 000
+Keywords: validation mmc_send_tuning
+Status: initial draft
+Phase: validation
+Ref:
+QA: initial
+Tracking: ?
+Format: ascii text
+
+
+# Validate function
+
+mmc_send_tuning             drivers/mmc/core/mmc_ops.c
+
+## Result PIT
+
+Modified by 1 patch.
+
+- PATCH: 9459-mmc-mmc-extend-the-mmc_send_tuning.patch
+
+{   'add_cnt_f': 0,
+    'add_cnt_t': 3,
+    'commit': '9979dbe5158899b556eb772b7335e29417ac0ddd',
+    'cu': 'drivers/mmc/core/mmc_ops.c',
+    'fun': 'mmc_send_tuning',
+    'lines_add': [(591, True), (638, True), (639, True)],
+    'lines_rm': [(592, True), (602, True), (607, True), (611, True)],
+    'rm_cnt_f': 0,
+    'rm_cnt_t': 4}
+
+
+## Create git diff with showlinenum
+
+$ git diff v4.3 drivers/mmc/core/mmc_ops.c | ./showlinenum.awk > mmc_send_tuning.diff
+
+Extract section for function mmc_send_tuning
+
+@@ -589,7 +588,7 @@ int mmc_switch(struct mmc_card *card, u8 set, u8 index, u8     value,
+588: }
+589: EXPORT_SYMBOL_GPL(mmc_switch);
+590: 
+   :-int mmc_send_tuning(struct mmc_host *host)
+591:+int mmc_send_tuning(struct mmc_host *host, u32 opcode, int *cmd_error)
+592: {
+593:    struct mmc_request mrq = {NULL};
+594:    struct mmc_command cmd = {0};
+@@ -599,16 +598,13 @@ int mmc_send_tuning(struct mmc_host *host)
+598:    const u8 *tuning_block_pattern;
+599:    int size, err = 0;
+600:    u8 *data_buf;
+   :-   u32 opcode;
+601: 
+602:    if (ios->bus_width == MMC_BUS_WIDTH_8) {
+603:        tuning_block_pattern = tuning_blk_pattern_8bit;
+604:        size = sizeof(tuning_blk_pattern_8bit);
+   :-       opcode = MMC_SEND_TUNING_BLOCK_HS200;
+605:    } else if (ios->bus_width == MMC_BUS_WIDTH_4) {
+606:        tuning_block_pattern = tuning_blk_pattern_4bit;
+607:        size = sizeof(tuning_blk_pattern_4bit);
+   :-       opcode = MMC_SEND_TUNING_BLOCK;
+608:    } else
+609:        return -EINVAL;
+610: 
+@@ -639,6 +635,9 @@ int mmc_send_tuning(struct mmc_host *host)
+635: 
+636:    mmc_wait_for_req(host, &mrq);
+637: 
+638:+   if (cmd_error)
+639:+       *cmd_error = cmd.error;
+640:+
+641:    if (cmd.error) {
+642:        err = cmd.error;
+643:        goto out;
+
+
+Removed Lines:
+
+Check drivers/mmc/core/mmc_ops.c line 592 with
+
+$ sed -n '592,592p' drivers/mmc/core/mmc_ops.c
+int mmc_send_tuning(struct mmc_host *host)
+
+Check drivers/mmc/core/mmc_ops.c line 602 with
+
+$ sed -n '602,602p' drivers/mmc/core/mmc_ops.c
+        u32 opcode;
+
+
+Check drivers/mmc/core/mmc_ops.c line 607 with
+
+$ sed -n '607,607p' drivers/mmc/core/mmc_ops.c
+            opcode = MMC_SEND_TUNING_BLOCK_HS200;
+
+
+Check drivers/mmc/core/mmc_ops.c line 611 with
+
+$ sed -n '611,611p' drivers/mmc/core/mmc_ops.c
+            opcode = MMC_SEND_TUNING_BLOCK;
+
+
+## Verify patch
+
+@@ -588,7 +588,7 @@ int mmc_switch(struct mmc_card *card, u8 set, u8 index, u8     value,
+ }
+ EXPORT_SYMBOL_GPL(mmc_switch);
+
+-int mmc_send_tuning(struct mmc_host *host)
++int mmc_send_tuning(struct mmc_host *host, u32 opcode, int *cmd_error)
+ {
+    struct mmc_request mrq = {NULL};
+    struct mmc_command cmd = {0};
+@@ -598,16 +598,13 @@ int mmc_send_tuning(struct mmc_host *host)
+    const u8 *tuning_block_pattern;
+    int size, err = 0;
+    u8 *data_buf;
+-   u32 opcode;
+
+    if (ios->bus_width == MMC_BUS_WIDTH_8) {
+        tuning_block_pattern = tuning_blk_pattern_8bit;
+        size = sizeof(tuning_blk_pattern_8bit);
+-       opcode = MMC_SEND_TUNING_BLOCK_HS200;
+    } else if (ios->bus_width == MMC_BUS_WIDTH_4) {
+        tuning_block_pattern = tuning_blk_pattern_4bit;
+        size = sizeof(tuning_blk_pattern_4bit);
+-       opcode = MMC_SEND_TUNING_BLOCK;
+    } else
+        return -EINVAL;
+
+@@ -638,6 +635,9 @@ int mmc_send_tuning(struct mmc_host *host)
+
+    mmc_wait_for_req(host, &mrq);
+
++   if (cmd_error)
++       *cmd_error = cmd.error;
++
+    if (cmd.error) {
+        err = cmd.error;
+        goto out;
+
+
+## Result
+
+lines added   : ok
+lines removed : ok
+line numbers  : ok
+

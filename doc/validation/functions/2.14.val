@@ -1,0 +1,78 @@
+
+PIT Validation - fun: request_key_auth_new 
+
+Author: Markus Kreidl
+Review: Reviewer (if applicable else ----)
+Date: 2018-04-05
+Expires: 000
+Keywords: setup, configuration, pit
+Status: initial draft
+Phase: validation
+Ref:
+QA: initial
+Tracking: ?
+Format: ascii text
+
+
+# Validate function
+
+request_key_auth_new      security/keys/request_key_auth.c
+
+## Result PIT
+
+Modified by 1 patch.
+
+-PATCH: 8131-KEYS-Merge-the-type-specific-data-with-the-payload-d.patch
+
+{   'add_cnt_f': 0,
+    'add_cnt_t': 1,
+    'commit': '146aa8b1453bd8f1ff2304ffb71b4ee0eb9acdcc',
+    'cu': 'security/keys/request_key_auth.c',
+    'fun': 'request_key_auth_new',
+    'lines_add': [(182, True)],
+    'lines_rm': [(182, True)],
+    'rm_cnt_f': 0,
+    'rm_cnt_t': 1}
+
+
+## Create git diff with showlinenum
+
+$ git diff v4.3 security/keys/request_key_auth.c | ./showlinenum.awk > request_key_auth_new.diff
+
+Extract section for function request_key_auth_new
+
+@@ -179,7 +179,7 @@ struct key *request_key_auth_new(struct key *target, const     void *callout_info,
+179:        if (test_bit(KEY_FLAG_REVOKED, &cred->request_key_auth->flags))
+180:            goto auth_key_revoked;
+181: 
+   :-       irka = cred->request_key_auth->payload.data;
+182:+       irka = cred->request_key_auth->payload.data[0];
+183:        rka->cred = get_cred(irka->cred);
+184:        rka->pid = irka->pid;
+
+
+Removed Lines:
+
+Check security/keys/request_key_auth.c line 182
+
+sed -n '182,182p' security/keys/request_key_auth.c
+		irka = cred->request_key_auth->payload.data;
+
+
+## Verify patch
+
+@@ -179,7 +179,7 @@ struct key *request_key_auth_new(struct key *target, const     void *callout_info,
+        if (test_bit(KEY_FLAG_REVOKED, &cred->request_key_auth->flags))
+            goto auth_key_revoked;
+
+-       irka = cred->request_key_auth->payload.data;
++       irka = cred->request_key_auth->payload.data[0];
+        rka->cred = get_cred(irka->cred);
+        rka->pid = irka->pid;
+
+## Result
+
+lines added   : ok
+lines removed : ok
+line numbers  : ok
+

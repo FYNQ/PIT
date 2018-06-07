@@ -1,0 +1,332 @@
+
+PIT Validation setup - fun: ip_do_fragment
+
+Author: Markus Kreidl
+Review: Reviewer (if applicable else ----)
+Date: 2018-05-30
+Expires: 000
+Keywords: validation ip_do_fragment
+Status: initial draft
+Phase: validation
+Ref:
+QA: initial
+Tracking: ?
+Format: ascii text
+
+
+# Validate function
+
+ip_do_fragment                     net/ipv4/ip_output.c
+
+## Result PIT
+
+Modified by 3 patches.
+
+
+- PATCH 1: 1298-ipv4-Only-compute-net-once-in-ip_do_fragment.patch
+
+{   'add_cnt_f': 0,
+    'add_cnt_t': 6,
+    'commit': '26a949dbd5595b987bf199be4442136e9288a93e',
+    'cu': 'net/ipv4/ip_output.c',
+    'fun': 'ip_do_fragment',
+    'lines_add': [   (632, True),
+                     (642, True),
+                     (651, True),
+                     (770, True),
+                     (773, True),
+                     (778, True)],
+    'lines_rm': [   (627, True),
+                    (637, True),
+                    (646, True),
+                    (768, True),
+                    (771, True),
+                    (776, True)],
+    'rm_cnt_f': 0,
+    'rm_cnt_t': 6}
+
+- PATCH 2: 3221-ipv4-Pass-struct-net-through-ip_fragment.patch
+
+{   'add_cnt_f': 1,
+    'add_cnt_t': 3,
+    'commit': '694869b3c5440e0d821583ec8811b6cb5d03742d',
+    'cu': 'net/ipv4/ip_output.c',
+    'fun': 'ip_do_fragment',
+    'lines_add': [(521, True), (522, False), (629, True), (766, True)],
+    'lines_rm': [(521, True), (522, False), (624, True), (764, True)],
+    'rm_cnt_f': 1,
+    'rm_cnt_t': 3}
+
+- PATCH 3: 10150-ipv4-add-defensive-check-for-CHECKSUM_PARTIAL-skbs-.patch
+
+{   'add_cnt_f': 0,
+    'add_cnt_t': 3,
+    'commit': 'dbd3393c56a8794fe596e7dd20d0efa613b9cf61',
+    'cu': 'net/ipv4/ip_output.c',
+    'fun': 'ip_do_fragment',
+    'lines_add': [(537, True), (538, True), (539, True)],
+    'lines_rm': [(661, True), (662, True)],
+    'rm_cnt_f': 0,
+    'rm_cnt_t': 2}
+
+
+
+## Create git diff with showlinenum
+
+$ git diff v4.3 net/ipv4/ip_output.c | ./showlinenum.awk > ip_do_fragment.diff
+
+Extract section for function ip_do_fragment
+
+
+@@ -518,8 +518,8 @@ static int ip_fragment(struct sock *sk, struct sk_buff *skb,
+518:  * single device frame, and queue such a frame for sending.
+519:  */
+520: 
+   :-int ip_do_fragment(struct sock *sk, struct sk_buff *skb,
+   :-          int (*output)(struct sock *, struct sk_buff *))
+521:P2+int ip_do_fragment(struct net *net, struct sock *sk, struct sk_buff *skb,
+522:P2+          int (*output)(struct net *, struct sock *, struct sk_buff *))
+523: {
+524:    struct iphdr *iph;
+525:    int ptr;
+@@ -533,6 +533,11 @@ int ip_do_fragment(struct sock *sk, struct sk_buff *skb,
+533: 
+534:    dev = rt->dst.dev;
+535: 
+536:+   /* for offloaded checksums cleanup checksum before fragmentation */
+537:P3+   if (skb->ip_summed == CHECKSUM_PARTIAL &&
+538:P3+       (err = skb_checksum_help(skb)))
+539:P3+       goto fail;
+540:+
+541:    /*
+542:     *  Point into the IP datagram header.
+543:     */
+@@ -621,10 +626,10 @@ int ip_do_fragment(struct sock *sk, struct sk_buff *skb,
+626:                ip_send_check(iph);
+627:            }
+628: 
+   :-           err = output(sk, skb);
+629:P2+           err = output(net, sk, skb);
+630: 
+631:            if (!err)
+   :-               IP_INC_STATS(dev_net(dev), IPSTATS_MIB_FRAGCREATES);
+632:P1+               IP_INC_STATS(net, IPSTATS_MIB_FRAGCREATES);
+633:            if (err || !frag)
+634:                break;
+635: 
+@@ -634,7 +639,7 @@ int ip_do_fragment(struct sock *sk, struct sk_buff *skb,
+639:        }
+640: 
+641:        if (err == 0) {
+   :-           IP_INC_STATS(dev_net(dev), IPSTATS_MIB_FRAGOKS);
+642:P1+           IP_INC_STATS(net, IPSTATS_MIB_FRAGOKS);
+643:            return 0;
+644:        }
+645: 
+@@ -643,7 +648,7 @@ int ip_do_fragment(struct sock *sk, struct sk_buff *skb,
+648:            kfree_skb(frag);
+649:            frag = skb;
+650:        }
+   :-       IP_INC_STATS(dev_net(dev), IPSTATS_MIB_FRAGFAILS);
+651:P1+       IP_INC_STATS(net, IPSTATS_MIB_FRAGFAILS);
+652:        return err;
+653: 
+654: slow_path_clean:
+@@ -657,9 +662,6 @@ slow_path_clean:
+662:    }
+663:
+654: slow_path_clean:
+@@ -657,9 +662,6 @@ slow_path_clean:
+662:    }
+663: 
+664: slow_path:
+   :-   /* for offloaded checksums cleanup checksum before fragmentation */
+   :-   if ((skb->ip_summed == CHECKSUM_PARTIAL) && skb_checksum_help(skb))
+   :-       goto fail;
+665:    iph = ip_hdr(skb);
+666: 
+667:    left = skb->len - hlen;     /* Space per frame */
+@@ -761,19 +763,19 @@ slow_path:
+763: 
+764:        ip_send_check(iph);
+765: 
+   :-       err = output(sk, skb2);
+766:P2+       err = output(net, sk, skb2);
+767:        if (err)
+768:            goto fail;
+769: 
+   :-       IP_INC_STATS(dev_net(dev), IPSTATS_MIB_FRAGCREATES);
+770:P1+       IP_INC_STATS(net, IPSTATS_MIB_FRAGCREATES);
+771:    }
+772:    consume_skb(skb);
+   :-   IP_INC_STATS(dev_net(dev), IPSTATS_MIB_FRAGOKS);
+773:P1+   IP_INC_STATS(net, IPSTATS_MIB_FRAGOKS);
+774:    return err;
+775: 
+776: fail:
+777:    kfree_skb(skb);
+   :-   IP_INC_STATS(dev_net(dev), IPSTATS_MIB_FRAGFAILS);
+778:P1+   IP_INC_STATS(net, IPSTATS_MIB_FRAGFAILS);
+779:    return err;
+780: }
+781: EXPORT_SYMBOL(ip_do_fragment);
+
+
+Removed Lines:
+
+- PATCH 1:
+
+Check net/ipv4/ip_output.c at line 627 with                                        
+
+$ sed -n '627,627p' net/ipv4/ip_output.c
+                IP_INC_STATS(dev_net(dev), IPSTATS_MIB_FRAGCREATES);
+
+Check net/ipv4/ip_output.c at line 637 with
+
+$ sed -n '637,637p' net/ipv4/ip_output.c
+            IP_INC_STATS(dev_net(dev), IPSTATS_MIB_FRAGOKS);
+
+Check net/ipv4/ip_output.c at line 646 with
+
+$ sed -n '646,646p' net/ipv4/ip_output.c
+        IP_INC_STATS(dev_net(dev), IPSTATS_MIB_FRAGFAILS);
+
+Check net/ipv4/ip_output.c at line 768 with
+
+$ sed -n '768,768p' net/ipv4/ip_output.c
+        IP_INC_STATS(dev_net(dev), IPSTATS_MIB_FRAGCREATES);
+
+Check net/ipv4/ip_output.c at line 771 with
+
+$ sed -n '771,771p' net/ipv4/ip_output.c
+    IP_INC_STATS(dev_net(dev), IPSTATS_MIB_FRAGOKS);
+
+Check net/ipv4/ip_output.c at line 776 with
+
+$ sed -n '776,776p' net/ipv4/ip_output.c
+    IP_INC_STATS(dev_net(dev), IPSTATS_MIB_FRAGFAILS);
+
+
+- PATCH 2:
+
+$ sed -n '521,522p' net/ipv4/ip_output.c                                           
+int ip_do_fragment(struct sock *sk, struct sk_buff *skb,
+           int (*output)(struct sock *, struct sk_buff *))
+
+$ sed -n '624,624p' net/ipv4/ip_output.c
+            err = output(sk, skb);      
+
+$ sed -n '764,764p' net/ipv4/ip_output.c
+        err = output(sk, skb2);
+
+
+## Verify patch
+
+- PATCH 1:
+
+@@ -531,9 +531,11 @@ int ip_do_fragment(struct sock *sk, struct sk_buff *skb,
+    int offset;
+    __be16 not_last_frag;
+    struct rtable *rt = skb_rtable(skb);
++   struct net *net;
+    int err = 0;
+
+    dev = rt->dst.dev;
++   net = dev_net(dev);
+
+    /*
+     *  Point into the IP datagram header.
+@@ -626,7 +628,7 @@ int ip_do_fragment(struct sock *sk, struct sk_buff *skb,
+            err = output(sk, skb);
+
+            if (!err)
+-               IP_INC_STATS(dev_net(dev), IPSTATS_MIB_FRAGCREATES);
++               IP_INC_STATS(net, IPSTATS_MIB_FRAGCREATES);
+            if (err || !frag)
+                break;
+
+@@ -636,7 +638,7 @@ int ip_do_fragment(struct sock *sk, struct sk_buff *skb,
+        }
+
+        if (err == 0) {
+-           IP_INC_STATS(dev_net(dev), IPSTATS_MIB_FRAGOKS);
++           IP_INC_STATS(net, IPSTATS_MIB_FRAGOKS);
+            return 0;
+        }
+
+@@ -645,7 +647,7 @@ int ip_do_fragment(struct sock *sk, struct sk_buff *skb,
+            kfree_skb(frag);
+            frag = skb;
+        }
+-       IP_INC_STATS(dev_net(dev), IPSTATS_MIB_FRAGFAILS);
++       IP_INC_STATS(net, IPSTATS_MIB_FRAGFAILS);
+        return err;
+
+ slow_path_clean:
+@@ -767,15 +769,15 @@ slow_path:
+        if (err)
+            goto fail;
+
+-       IP_INC_STATS(dev_net(dev), IPSTATS_MIB_FRAGCREATES);
++       IP_INC_STATS(net, IPSTATS_MIB_FRAGCREATES);
+    }
+    consume_skb(skb);
+-   IP_INC_STATS(dev_net(dev), IPSTATS_MIB_FRAGOKS);
++   IP_INC_STATS(net, IPSTATS_MIB_FRAGOKS);
+    return err;
+
+ fail:
+    kfree_skb(skb);
+-   IP_INC_STATS(dev_net(dev), IPSTATS_MIB_FRAGFAILS);
++   IP_INC_STATS(net, IPSTATS_MIB_FRAGFAILS);
+    return err;
+ }
+ EXPORT_SYMBOL(ip_do_fragment);
+
+
+- PATCH 2:
+
+@@ -109,8 +109,8 @@ int ip_local_deliver(struct sk_buff *skb);
+ int ip_mr_input(struct sk_buff *skb);
+ int ip_output(struct sock *sk, struct sk_buff *skb);
+ int ip_mc_output(struct sock *sk, struct sk_buff *skb);
+-int ip_do_fragment(struct sock *sk, struct sk_buff *skb,
+-          int (*output)(struct sock *, struct sk_buff *));
++int ip_do_fragment(struct net *net, struct sock *sk, struct sk_buff *skb, 
++          int (*output)(struct net *, struct sock *, struct sk_buff *));
+ void ip_send_check(struct iphdr *ip);
+ int __ip_local_out(struct sk_buff *skb);
+ int ip_local_out_sk(struct sock *sk, struct sk_buff *skb);
+
+- PATCH 3:
+
+@@ -533,6 +533,11 @@ int ip_do_fragment(struct net *net, struct sock *sk, struct   sk_buff *skb,
+
+    dev = rt->dst.dev;
+
++   /* for offloaded checksums cleanup checksum before fragmentation */
++   if (skb->ip_summed == CHECKSUM_PARTIAL &&
++       (err = skb_checksum_help(skb)))
++       goto fail;
++
+    /*
+     *  Point into the IP datagram header.
+     */
+@@ -657,9 +662,6 @@ slow_path_clean:
+    }
+
+ slow_path:
+-   /* for offloaded checksums cleanup checksum before fragmentation */
+-   if ((skb->ip_summed == CHECKSUM_PARTIAL) && skb_checksum_help(skb))
+-       goto fail;
+    iph = ip_hdr(skb);
+
+    left = skb->len - hlen;     /* Space per frame */
+
+
+## Result
+
+lines added   : ok
+lines removed : ok
+line numbers  : ok
+

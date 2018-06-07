@@ -1,0 +1,61 @@
+PIT Validation setup
+
+Author: Markus Kreidl
+Review: Reviewer (if applicable else ----)
+Date: 2018-04-05
+Expires: 000
+Keywords: setup, configuration, pit
+Status: initial draft
+Phase: validation
+Ref:
+QA: initial
+Tracking: ?
+Format: ascii text
+
+
+# Used software versions
+
+Distribution     : Debian stretch
+kernel version   : v4.3, v4.4-rc1
+GCC version      : 6.3.0
+PIT3 version tag : v0.1
+
+# Validation
+
+## Select (by random) 30 changed function and validate them
+
+Script to use for selecting 30 functions randomly: fun_select.py
+
+File        Function                            File
+--------------------------------------------------------------------------------
+2.1.val     show_free_areas                     mm/page_alloc.c
+2.2.val     cgroup_disable                      kernel/cgroup.c
+2.3.val     ext4_journalled_write_end           fs/ext4/inode.c
+2.4.val     sk_clone_lock                       net/core/sock.c
+2.5.val     arch_get_unmapped_area_topdown      mm/mmap.c
+2.6.val     perf_pmu_cancel_txn                 kernel/events/core.c
+2.7.val     bstr_printf                         lib/vsprintf.c
+2.8.val     gfpflags_to_migratetype             include/linux/gfp.h
+2.9.val     arpt_do_table                       net/ipv4/netfilter/arp_tables.c
+2.10.val    talitos_edesc_alloc                 drivers/crypto/talitos.c
+2.11.val    pci_revert_fw_address               drivers/pci/setup-res.c
+2.12.val    print_bin_fmt                       kernel/trace/trace.c
+2.13.val    compute_score                       net/ipv4/inet_hashtables.c
+2.14.val    request_key_auth_new                security/keys/request_key_auth.c
+2.15.val    __nft_trace_packet                  net/netfilter/nf_tables_core.c
+2.16.val    packet_bind_spkt                    net/packet/af_packet.c
+2.17.val    ondemand_readahead                  mm/readahead.c
+2.18.val    run_filter                          drivers/net/tun.c
+2.19.val    synchronize_sched_expedited_wait    kernel/rcu/tree.c
+2.20.val    tcp_get_cookie_sock                 net/ipv4/syncookies.c
+2.21.val    synchronize_sched_expedited         kernel/rcu/tree.c
+2.22.val    dma_pool_alloc                      mm/dmapool.c
+2.23.val    fsl_pci_mcheck_exception            arch/powerpc/sysdev/fsl_pci.h
+2.24.val    mmc_send_tuning                     drivers/mmc/core/mmc_ops.c
+2.25.val    task_name                           fs/proc/array.c
+2.26.val    ip_do_fragment                      net/ipv4/ip_output.c
+2.27.val    ext4_writepage                      fs/ext4/inode.c
+2.28.val    nf_tables_newchain                  net/netfilter/nf_tables_api.c
+2.29.val    watchdog_set_timeout                drivers/watchdog/watchdog_dev.c
+2.30.val    of_irq_init                         drivers/of/irq.c
+

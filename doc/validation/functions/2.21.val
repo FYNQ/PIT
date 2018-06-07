@@ -1,0 +1,348 @@
+
+PIT Validation setup - fun: synchronize_sched_expedited_wait
+
+Author: Markus Kreidl
+Review: Reviewer (if applicable else ----)
+Date: 2018-05-30
+Expires: 000
+Keywords: validation synchronize_sched_expedited_wait
+Status: initial draft
+Phase: validation
+Ref:
+QA: initial
+Tracking: ?
+Format: ascii text
+
+
+# Validate function
+
+synchronize_sched_expedited_wait             kernel/rcu/tree.c
+
+## Result PIT
+
+
+
+
+Modified by 4 patches.
+
+-PATCH 1: 1482-rcu-Use-rsp-expedited_wq-instead-of-sync_rcu_preempt.patch
+
+{   'add_cnt_f': 0,
+    'add_cnt_t': 0,
+    'commit': 'f4ecea309d3e17ba5e90082308125ad23bd5701b',
+    'cu': 'kernel/rcu/tree.c',
+    'fun': 'synchronize_sched_expedited',
+    'lines_add': [],
+    'lines_rm': [(3559, True)],
+    'rm_cnt_f': 0,
+    'rm_cnt_t': 1}
+
+
+-PATCH 2: 1486-rcu-Move-synchronize_sched_expedited-to-combining-tr.patch
+
+{   'add_cnt_f': 0,
+    'add_cnt_t': 1,
+    'commit': 'bce5fa12aad148e15efd9bc0015dc4898b6e723b',
+    'cu': 'kernel/rcu/tree.c',
+    'fun': 'synchronize_sched_expedited',
+    'lines_add': [(3859, True)],
+    'lines_rm': [   (3534, True),
+                    (3560, True),
+                    (3561, True),
+                    (3562, True),
+                    (3563, True),
+                    (3565, True),
+                    (3568, True),
+                    (3569, True),
+                    (3570, True),
+                    (3571, True),
+                    (3572, True),
+                    (3573, True),
+                    (3577, True),
+                    (3578, True)],
+    'rm_cnt_f': 0,
+    'rm_cnt_t': 14}
+
+
+-PATCH 3: 4937-rcu-Stop-excluding-CPU-hotplug-in-synchronize_sched_.patch
+
+{   'add_cnt_f': 0,
+    'add_cnt_t': 1,
+    'commit': '807226e2fbb504d82cd504b7b6114896db41ef63',
+    'cu': 'kernel/rcu/tree.c',
+    'fun': 'synchronize_sched_expedited',
+    'lines_add': [(3854, True)],
+    'lines_rm': [   (3542, True),
+                    (3544, True),
+                    (3545, True),
+                    (3546, True),
+                    (3548, True),
+                    (3551, True),
+                    (3552, True),
+                    (3583, True)],
+    'rm_cnt_f': 0,
+    'rm_cnt_t': 8}
+
+
+-PATCH 4: 4944-rcu-Better-hotplug-handling-for-synchronize_sched_ex.patch
+
+cu: kernel/rcu/tree.c fun: synchronize_sched_expedited
+
+{   'add_cnt_f': 0,
+    'add_cnt_t': 1,
+    'commit': '338b0f760e84676130c6e4d8268cb8c923b38c8c',
+    'cu': 'kernel/rcu/tree.c',
+    'fun': 'synchronize_sched_expedited',
+    'lines_add': [(3858, True)],
+    'lines_rm': [],
+    'rm_cnt_f': 0,
+    'rm_cnt_t': 0}
+
+
+
+## Create git diff with showlinenum
+
+$ git diff v4.3  kernel/rcu/tree.c | ./showlinenum.awk > synchronize_sched_expedited.diff
+
+Extract section for function synchronize_sched_expedited
+
+@@ -3531,7 +3843,6 @@ static void synchronize_sched_expedited_wait(struct          rcu_state *rsp)
+3843:  */
+3844: void synchronize_sched_expedited(void)
+3845: {
+    :-  int cpu;
+3846:   unsigned long s;
+3847:   struct rcu_node *rnp;
+3848:   struct rcu_state *rsp = &rcu_sched_state;
+
+@@ -3539,48 +3850,16 @@ void synchronize_sched_expedited(void)
+3850:   /* Take a snapshot of the sequence number.  */
+3851:   s = rcu_exp_gp_seq_snap(rsp);
+3852: 
+    :P3-  if (!try_get_online_cpus()) {
+    :-      /* CPU hotplug operation in flight, fall back to normal GP. */
+    :P3-      wait_rcu_gp(call_rcu_sched);
+    :P3-      atomic_long_inc(&rsp->expedited_normal);
+    :P3-      return;
+    :-  }
+    :P3-  WARN_ON_ONCE(cpu_is_offline(raw_smp_processor_id()));
+    :-
+3853:   rnp = exp_funnel_lock(rsp, s);
+    :P3-  if (rnp == NULL) {
+    :P3-      put_online_cpus();
+3854:P4+  if (rnp == NULL)
+3855:       return;  /* Someone else did our work for us. */
+    :-  }
+3856: 
+3857:   rcu_exp_gp_seq_start(rsp);
+    :-
+    :-  /* Stop each CPU that is online, non-idle, and not us. */
+    :P1-  init_waitqueue_head(&rsp->expedited_wq);
+    :P2-  atomic_set(&rsp->expedited_need_qs, 1); /* Extra count avoids race. */
+    :P2-  for_each_online_cpu(cpu) {
+    :P2-      struct rcu_data *rdp = per_cpu_ptr(rsp->rda, cpu);
+    :P2-      struct rcu_dynticks *rdtp = &per_cpu(rcu_dynticks, cpu);
+    :-
+    :P2-      rdp->exp_done = false;
+    :-
+    :-      /* Skip our CPU and any idle CPUs. */
+    :P2-      if (raw_smp_processor_id() == cpu ||
+    :P2-          !(atomic_add_return(0, &rdtp->dynticks) & 0x1))
+    :P2-          continue;
+    :P2-      atomic_inc(&rsp->expedited_need_qs);
+    :P2-      stop_one_cpu_nowait(cpu, synchronize_sched_expedited_cpu_stop,
+    :P2-                  rdp, &rdp->exp_stop_work);
+    :-  }
+    :-
+    :-  /* Remove extra count and, if necessary, wait for CPUs to stop. */
+    :P2-  if (!atomic_dec_and_test(&rsp->expedited_need_qs))
+    :P2-      synchronize_sched_expedited_wait(rsp);
+3858:P3+  sync_rcu_exp_select_cpus(rsp, sync_sched_exp_handler);
+3859:P2+  synchronize_sched_expedited_wait(rsp);
+3860: 
+3861:   rcu_exp_gp_seq_end(rsp);
+3862:   mutex_unlock(&rnp->exp_funnel_mutex);
+    :-
+    :P3-  put_online_cpus();
+3863: }
+3864: EXPORT_SYMBOL_GPL(synchronize_sched_expedited);
+
+
+Removed Lines:
+
+- PATCH 1:
+
+$ sed -n '3559,3559p' kernel/rcu/tree.c
+	init_waitqueue_head(&rsp->expedited_wq);
+
+- PATCH 2:
+
+$ sed -n '3534,3534p' kernel/rcu/tree.c
+    int cpu;
+
+$ sed -n '3560,3565p' kernel/rcu/tree.c
+    atomic_set(&rsp->expedited_need_qs, 1); /* Extra count avoids race. */
+    for_each_online_cpu(cpu) {
+        struct rcu_data *rdp = per_cpu_ptr(rsp->rda, cpu);
+        struct rcu_dynticks *rdtp = &per_cpu(rcu_dynticks, cpu);
+
+        rdp->exp_done = false;
+
+$ sed -n '3568,3573p' kernel/rcu/tree.c
+        if (raw_smp_processor_id() == cpu ||
+            !(atomic_add_return(0, &rdtp->dynticks) & 0x1))
+            continue;
+        atomic_inc(&rsp->expedited_need_qs);
+        stop_one_cpu_nowait(cpu, synchronize_sched_expedited_cpu_stop,
+                    rdp, &rdp->exp_stop_work);
+
+$ sed -n '3577,3578p' kernel/rcu/tree.c
+    if (!atomic_dec_and_test(&rsp->expedited_need_qs))
+        synchronize_sched_expedited_wait(rsp);
+
+
+
+- PATCH 3:
+
+Check kernel/rcu/tree.c line 3822 with
+
+$ sed -n '3542,3542p' kernel/rcu/tree.c
+    if (!try_get_online_cpus()) {
+
+
+Check kernel/rcu/tree.c line 3544 to 3546 with
+
+$ sed -n '3544,3546p' kernel/rcu/tree.c
+        wait_rcu_gp(call_rcu_sched);
+        atomic_long_inc(&rsp->expedited_normal);
+        return;
+
+Check kernel/rcu/tree.c at line 3548
+
+$ sed -n '3548,3548p' kernel/rcu/tree.c
+    WARN_ON_ONCE(cpu_is_offline(raw_smp_processor_id()));
+
+Check kernel/rcu/tree.c at line 3551
+
+$ sed -n '3551,3551p' kernel/rcu/tree.c
+    if (rnp == NULL) {
+        put_online_cpus();
+
+
+Check kernel/rcu/tree.c at line 3583
+
+$ sed -n '3583,3583p' kernel/rcu/tree.c
+    put_online_cpus();
+
+- PATCH 4:
+
+No lines removed.
+
+## Verify patch
+
+- PATCH 1
+
+@@ -3556,7 +3556,6 @@ void synchronize_sched_expedited(void)
+    rcu_exp_gp_seq_start(rsp);
+
+    /* Stop each CPU that is online, non-idle, and not us. */
+-   init_waitqueue_head(&rsp->expedited_wq);
+    atomic_set(&rsp->expedited_need_qs, 1); /* Extra count avoids race. */
+    for_each_online_cpu(cpu) {
+        struct rcu_data *rdp = per_cpu_ptr(rsp->rda, cpu);
+
+
+- PATCH 2:
+
+@@ -3713,7 +3774,6 @@ static void synchronize_sched_expedited_wait(struct          rcu_state *rsp)
+  */
+ void synchronize_sched_expedited(void)
+ {
+-   int cpu;
+    unsigned long s;
+    struct rcu_node *rnp;
+    struct rcu_state *rsp = &rcu_sched_state;
+
+
+@@ -3736,27 +3796,8 @@ void synchronize_sched_expedited(void)
+    }
+
+    rcu_exp_gp_seq_start(rsp);
+-
+-   /* Stop each CPU that is online, non-idle, and not us. */
+-   atomic_set(&rsp->expedited_need_qs, 1); /* Extra count avoids race. */
+-   for_each_online_cpu(cpu) {
+-       struct rcu_data *rdp = per_cpu_ptr(rsp->rda, cpu);
+-       struct rcu_dynticks *rdtp = &per_cpu(rcu_dynticks, cpu);
+-
+-       rdp->exp_done = false;
+-
+-       /* Skip our CPU and any idle CPUs. */
+-       if (raw_smp_processor_id() == cpu ||
+-           !(atomic_add_return(0, &rdtp->dynticks) & 0x1))
+-           continue;
+-       atomic_inc(&rsp->expedited_need_qs);
+-       stop_one_cpu_nowait(cpu, synchronize_sched_expedited_cpu_stop,
+-                   rdp, &rdp->exp_stop_work);
+-   }
+-
+-   /* Remove extra count and, if necessary, wait for CPUs to stop. */
+-   if (!atomic_dec_and_test(&rsp->expedited_need_qs))
+-       synchronize_sched_expedited_wait(rsp);
++   sync_sched_exp_select_cpus(rsp);
++   synchronize_sched_expedited_wait(rsp);
+
+    rcu_exp_gp_seq_end(rsp);
+    mutex_unlock(&rnp->exp_funnel_mutex);
+
+
+
+PATCH 3:
+
+@@ -3785,19 +3785,9 @@ void synchronize_sched_expedited(void)
+    /* Take a snapshot of the sequence number.  */
+    s = rcu_exp_gp_seq_snap(rsp);
+
+-   if (!try_get_online_cpus()) {
+-       /* CPU hotplug operation in flight, fall back to normal GP. */
+-       wait_rcu_gp(call_rcu_sched);
+-       atomic_long_inc(&rsp->expedited_normal);
+-       return;
+-   }
+-   WARN_ON_ONCE(cpu_is_offline(raw_smp_processor_id()));
+-
+    rnp = exp_funnel_lock(rsp, s);
+-   if (rnp == NULL) {
+-       put_online_cpus();
++   if (rnp == NULL)
+        return;  /* Someone else did our work for us. */
+-   }
+
+    rcu_exp_gp_seq_start(rsp);
+    sync_sched_exp_select_cpus(rsp);
+@@ -3805,8 +3795,6 @@ void synchronize_sched_expedited(void)
+
+    rcu_exp_gp_seq_end(rsp);
+    mutex_unlock(&rnp->exp_funnel_mutex);
+-
+-   put_online_cpus();
+ }
+ EXPORT_SYMBOL_GPL(synchronize_sched_expedited);
+
+
+PATCH 4:
+
+@@ -3796,7 +3848,7 @@ void synchronize_sched_expedited(void)
+        return;  /* Someone else did our work for us. */
+
+    rcu_exp_gp_seq_start(rsp);
+-   sync_rcu_exp_select_cpus(rsp, synchronize_sched_expedited_cpu_stop);
++   sync_rcu_exp_select_cpus(rsp, sync_sched_exp_handler);
+    synchronize_sched_expedited_wait(rsp);
+
+## Result
+
+lines added   : ok
+lines removed : ok
+line numbers  : ok
+

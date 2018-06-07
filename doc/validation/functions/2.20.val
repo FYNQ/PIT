@@ -1,0 +1,81 @@
+
+PIT Validation - fun: compute_score
+
+Author: Markus Kreidl
+Review: Reviewer (if applicable else ----)
+Date: 2018-04-05
+Expires: 000
+Keywords: setup, configuration, pit
+Status: initial draft
+Phase: validation
+Ref:
+QA: initial
+Tracking: ?
+Format: ascii text
+
+
+# Validation function
+
+compute_score     net/ipv4/inet_hashtables.c
+
+
+
+## Result PIT
+
+Modified by x patches
+
+-PATCH:
+
+{   'add': [192, 193],
+    'add_cnt': 2,
+    'commit': '70da268b569d32a9fddeea85dc18043de9d89f89',
+    'file': 'net/ipv4/inet_hashtables.c',
+    'fun': 'compute_score',
+    'hunk_start': 185,
+    'patch_name': '5751-net-SO_INCOMING_CPU-setsockopt-support.patch',
+    'rm': [],
+    'rm_cnt': 0}
+
+
+
+## Create git diff with showlinenum
+
+$ git diff v4.3 net/ipv4/inet_hashtables.c | ./showlinenum.awk > inet_hashtables.diff
+
+Extract section for function inet_hashtables
+
+@@ -185,6 +189,8 @@ static inline int compute_score(struct sock *sk, struct net *  net,
+189:                return -1;
+190:            score += 4;
+191:        }
+192:+       if (sk->sk_incoming_cpu == raw_smp_processor_id())
+193:+           score++;
+194:    }
+195:    return score;
+196: }
+
+
+
+Removed Lines:
+
+No line removed
+
+## Verify patch
+
+@@ -185,6 +185,8 @@ static inline int compute_score(struct sock *sk, struct net *  net,
+                return -1;
+            score += 4;
+        }
++       if (sk->sk_incoming_cpu == raw_smp_processor_id())
++           score++;
+    }
+    return score;
+ }
+
+
+## Result
+
+lines added   : ok
+lines removed : ok
+line numbers  : ok
+
