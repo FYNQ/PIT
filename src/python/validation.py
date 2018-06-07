@@ -10,8 +10,11 @@ funs = ['cgroup_disable', 'ext4_journalled_write_end', 'of_irq_init', 'show_free
         'synchronize_sched_expedited', 'dma_pool_alloc', 'fsl_pci_mcheck_exception', 'mmc_send_tuning', 'task_name', 'ip_do_fragment', 'ext4_writepage', 'nf_tables_newchain', 'posix_acl_xattr_get']
 
 
+funs_add = []
 
-path_validation = '%s/../validation/' % (os.getcwd())
+funs_renamed = ['ext4_set_resv_clusters']
+
+path_validation = '%s/../../doc/validation/' % (os.getcwd())
 
 header = {'header': '',
           'author': '',
@@ -27,10 +30,10 @@ header = {'header': '',
           'format': 'ascii text'}
 
 header['author'] = 'Markus Kreidl'
-header['date'] '%s-%s-%s' % (now.year, now.month, now.day)
+header['date'] = '%d-%d-%d' % (now.year, now.month, now.day)
 
 def print_val_added(data):
-    cnt = 1
+    cnt = 2
     index = []
     for cu in data:
         for fun in data[cu]:
@@ -46,10 +49,14 @@ def print_val_added(data):
             for i in it['htext']:
                 l.append('%s\n'%i)
             l.append('\n# Result:')
-            print_val_file(fname, )
+            print_val_file(fname, header, l)
+            index.append("%d.val\t %s\n" % (cnt, fun))
             cnt += 1
-            index.append(fun)
 
+    fname = '%s/functions_added/1.val' % (path_validation)
+    header['header'] = "Validation index for added functions"
+    header['keywords'] = 'index, validation, added functions'
+    print_val_file(fname, header, index)
 
 def print_val_renamed(data):
     for cu in data:
@@ -64,7 +71,7 @@ def print_val_renamed(data):
                     print(i)
 
 
-def print_val_file(info, fname):
+def print_val_file(fname, info, l):
     f = open(fname, 'w')
     f.write("%s\n" % info['header'])
     f.write("Author: %s\n" % info['author'])
@@ -77,6 +84,8 @@ def print_val_file(info, fname):
     f.write("QA: %s\n" % info['qa'])
     f.write("Tracking: %s\n" % info['tracking'])
     f.write("Format: %s\n\n\n" % info['format'])
+    for i in l:
+        f.write('%s' % i)
     f.close()
 
 
