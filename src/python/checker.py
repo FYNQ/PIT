@@ -1,9 +1,13 @@
 import os
+import pprint
 import logging
 from multiprocessing import Pool
 import aux
 import conf
 import src_tools as st
+
+pp = pprint.PrettyPrinter(indent=4)
+
 
 ppath = '/home/markus/work_ot/PIT/build/v4.3/ppc_men_defconfig/'
 
@@ -112,11 +116,12 @@ class worker:
                         (tag_cur, self.cnt_funs(self.fun_src_cur)))
         self.logger.info("function in tag %s: %d\n" %
                         (tag_nex, self.cnt_funs(self.fun_src_nex)))
-        fun_diffs, funs, fun_mv, n_in_cur, n_in_nex = st.gen_fun_diffs(path_cur,
+        fun_diffs, funs, fun_mv, n_in_cur, n_in_nex = st.gen_funs_diff(path_cur,
                                                        self.fun_src_cur,
                                                        self.fun_src_nex,
                                                        self.fun_decl_cur,
                                                        self.fun_decl_nex)
+
 
         self.logger.info("function not in current %d\n" %
                         (self.cnt_funs(n_in_cur)))
@@ -128,7 +133,7 @@ class worker:
         self.fun_moved = fun_mv
         self.not_in_cur = n_in_cur
         self.fun_diffs = fun_diffs
-
+        self.not_in_nex = n_in_nex
         self.logger.info("Create function diffs!\n")
         diff_jobs = []
         print("functions total %d "  % len(funs))
@@ -162,11 +167,25 @@ class worker:
         print("Added: %d" % self.cnt_funs(added))
         print("N Res: %d" % self.cnt_funs(not_res))
 
+        funs_renamed = self.get_funs(ren)
+        self.funs_removed = self.get_rm_funs(n_in_nex, funs_renamed)
         if conf.VALIDATION == True:
             validation.print_val_added(added)
+        l_added. res_commits = self.get_lines_mod(added)
+        #l_removed = self.get_lines_mod(funs_removed)
 
         #print_renamed(renamed)
 
+    def get_rm_funs(self, n_in_nex, funs_renamed):
+        data = {}
+        for cu in n_in_nex.keys():
+            for fun in n_in_nex[cu].keys():
+                if not fun in funs_renamed:
+                    if not cu in data.keys():
+                        data.update({cu:{}})
+                    data[cu].update({fun : n_in_nex[cu][fun]})
+
+        return data
 
 
     def get_stats(self, data, renamed, added):
@@ -187,6 +206,11 @@ class worker:
                 self.commits_insn_applied.append(commit)
 
         self.logger.info("Get stats for added functions ...\n")
+        r_ren, l_a_t, l_r_t, l_a_f, l_r_f, shas_fun =self.get_mod_of_ren(renamed)
+        self.l_insn_add_t += l_a_t
+        self.l_insn_rm_t += l_r_t
+        self.l_insn_add_f += l_a_f
+        self.l_insn_rm_f += l_r_f
 
 
     def create_diffs(self, git_linux, data, path, tag_cur, tag_nex):
@@ -218,8 +242,8 @@ class worker:
         else:
             return None
 
-    def get_mod_in_added(self, data):
-        l_add = 0
+    def get_lines_mod(self, data):
+        l_cnt = 0
         commits = []
         for cu in data:
             for fun in data[cu]:
@@ -235,14 +259,36 @@ class worker:
                 if pre_data == None:
                     print("Missing parse info !! ")
                 else:
-                    added = len(pre_data)
-                    l_add += added
+                    cnt = len(pre_data)
+                    l_cnt += cnt
                     if it['commit'] not in commits:
                         commits.append(it['commit'])
 
-                    print("Added   : %d" % added)
+                    print("modified : %d" % cnt)
 
-        return added, commits
+        return l_cnt, commits
+
+    def get_mod_of_ren(self, data):
+        for cu in data.keys():
+            for fun in data[cu]:
+                it = data[cu][fun]
+                fun_old = it['fun_old']
+                cur_src = self.fun_src_cur[cu][fun_old]['src']
+                nex_src = self.fun_src_nex[cu][fun]['src']
+
+                add, rm = st.get_diff(cur_src, nex_src)
+                p_it = {'data' : {'+': add, '-': rm},
+                        'cu' : cu,
+                        'info_cur': self.fun_src_cur[cu][fun_old]['info'],
+                        'info_next': self.fun_src_nex[cu][fun]['info']}
+
+                res, l_add_t, l_rm_t, l_add_f, l_rm_f, shas = st.get_mod_fun(
+                                fun, self.insns_cur, self.insns_nex,
+                                self.parsed_cur, self.parsed_nex, p_it,
+                                self.fun_patches_nf[fun])
+        return res, l_add_t, l_rm_t, l_add_f, l_rm_f, shas
+                #pp.pprint(res)
+#                print(XX)
 
     def get_mod_in_fun(self, diffs):
         """ Get modification between two versions of a function.
@@ -361,23 +407,22 @@ class worker:
                                     if r != None:
                                         if not cu in found.keys():
                                             found.update({cu:{}})
-                                        if fun not in found[cu].keys():
-                                            found[cu].update({fun:[]})
 
                                         patch_name = aux.find_commit(
                                                         self.diff_path, commit)
 
-                                        found[cu][fun].append({
+                                        found[cu].update({fun:{
                                                           'decl_nex': decl_nex,
                                                           'decl_old': r,
                                                           'fun_old': fun_o,
+                                                          'fun_new': fun,
                                                           'patch': patch,
                                                           'commit':commit,
                                                           'cu': cu,
                                                           'pname':patch_name,
                                                           'htext': ht,
                                                           'hfind': hunkfind,
-                                                          'hreplace':hunkreplace})
+                                                          'hreplace':hunkreplace}})
                                     else:
                                         if not cu in added.keys():
                                             added.update({cu:{}})
@@ -417,6 +462,13 @@ class worker:
         l = 0
         for cu in data.keys():
             l += len(data[cu])
+        return l
+
+    def get_funs(self, data):
+        l = []
+        for cu in data.keys():
+            for fun in data[cu].keys():
+                l.append(data[cu][fun]['fun_old'])
         return l
 
 
