@@ -39,13 +39,12 @@ def print_val_added(data):
         for fun in data[cu]:
             l = []
             header['header'] = "Validation add lines function %s" % fun
-            header['keywords'] = 'added lines, function: %s' % fun
+            header['keywords'] = 'added lines, added function %s' % fun
             fname = '%s/functions_added/%s.val' % (path_validation, cnt)
             it = data[cu][fun]
-            l.append("# Function: %s\n" % fun)
-            l.append("# Patch   : %s\n" % it['pname'])
-            l.append("# File    : %s\n\n" % cu)
-            l.append("# Hunk    : %s\n\n" % cu)
+            l.append("# Function : %s\n\n" % fun)
+            l.append("# Patch : %s\n\n" % it['pname'])
+            l.append("# File : %s\n\n" % cu)
             for i in it['htext']:
                 l.append('%s\n'%i)
             l.append('\n# Result:')
@@ -58,20 +57,73 @@ def print_val_added(data):
     header['keywords'] = 'index, validation, added functions'
     print_val_file(fname, header, index)
 
-def print_val_renamed(data):
+def print_val_removed(data):
+    cnt = 2
+    index = []
     for cu in data:
+        for fun in data[cu].keys():
+            it = data[cu][fun]
+            l = []
+            header['header'] = "Validation removed function %s" % fun
+            header['keywords'] = 'removed function %s' % fun
+            fname = '%s/functions_removed/%s.val' % (path_validation, cnt)
+
+            l.append("# Functions: %s\n\n" % (fun))
+            l.append("# File: %s\n\n" % it['cu'])
+            l.append("# Patch: %s\n\n" % it['pname'])
+            l.append("# Lines removed: %d\n\n" % it['len'])
+            l.append("# Hunk text:\n\n")
+            for i in it['htext']:
+                l.append("%s\n" % i)
+
+            print_val_file(fname, header, l)
+            index.append("%d.val\t %s\n" % (cnt, fun))
+            cnt += 1
+
+    fname = '%s/functions_removed/1.val' % (path_validation)
+    header['header'] = "Validation index for removed functions"
+    header['keywords'] = 'index, validation, removed functions'
+    print_val_file(fname, header, index)
+
+
+def print_val_renamed(data):
+    index = []
+    cnt = 2
+    index.append("this file")
+    for cu in data.keys():
         for fun in data[cu]:
-            items = data[cu][fun]
-            for it in items:
-                print("-------------------------------")
-                print("Fun ren : %s->%s " % (it['fun_old'], fun))
-                print("File    : %s" % it['cu'])
-                print("Patch   : %s" % it['pname'])
-                for i in it['htext']:
-                    print(i)
+            it = data[cu][fun]
+            l = []
+            header['header'] = "Validation rename of function %s to %s" %\
+                    (fun, it['fun_old'])
+            header['keywords'] = 'rename function %s to %s' % \
+                    (fun, it['fun_old'])
+            fname = '%s/functions_renamed/%s.val' % (path_validation, cnt)
+
+            l.append("# Fun ren: %s->%s\n\n" % (it['fun_old'], fun))
+            l.append("# File: %s\n\n" % it['cu'])
+            l.append("# Patch: %s\n\n" % it['pname'])
+            l.append("# Hunk text:\n\n")
+            for i in it['htext']:
+                l.append("%s\n" % i)
+
+            print_val_file(fname, header, l)
+            index.append("%d.val\t %s -> %s\n" % (cnt, it['fun_old'], fun))
+            cnt += 1
+
+    fname = '%s/functions_renamed/1.val' % (path_validation)
+    header['header'] = "Validation index for renamed functions"
+    header['keywords'] = 'index, validation, renamed functions'
+    print_val_file(fname, header, index)
+
+
+
 
 
 def print_val_file(fname, info, l):
+    if not os.path.isdir(os.path.dirname(fname)):
+        os.makedirs(os.path.dirname(fname))
+
     f = open(fname, 'w')
     f.write("%s\n" % info['header'])
     f.write("Author: %s\n" % info['author'])
