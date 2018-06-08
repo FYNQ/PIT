@@ -129,6 +129,29 @@ def hunk_decode(hunk):
 
     return text
 
+def get_hunk_rm_text(hunk):
+    """ Return lines added and removed in two list separated list
+
+    :param hunk: hunk of patch
+
+    :returns:
+        - res_add: lines added in hunk
+        - res_rm: lines removed in hunk
+
+    """
+    res_add = []
+    res_rm = []
+    n = 0
+    for i in hunk.text:
+        l = i.decode("utf-8").replace('\t', '').rstrip('\n').lstrip(' ')
+        if l.startswith('-'):
+            res_rm.append(l[1:].lstrip(' '))
+        else:
+            res_rm.append('')
+    return res_rm
+
+
+
 def get_hunk_text(hunk):
     """ Return lines added and removed in two list separated list
 
@@ -465,8 +488,10 @@ def gen_funs_diff(path, src_cur, src_next, decl_cur, decl_next):
                     if not cu in not_in_nex.keys():
                         not_in_nex.update({cu:{}})
                     fun_info_cur = src_cur[cu][fun]['info']
-                    not_in_nex[cu].update({fun:{ 'start': fun_info_cur['start'],
-                                                 'end': fun_info_cur['end']}})
+                    decl = decl_cur[cu][fun]
+                    not_in_nex[cu].update({fun:{'start': fun_info_cur['start'],
+                                                'end': fun_info_cur['end'],
+                                                'decl': decl}})
 
 
 
