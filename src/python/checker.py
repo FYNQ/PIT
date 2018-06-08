@@ -155,7 +155,7 @@ class worker:
         self.logger.info("Get patch information!")
         self.format_patches = aux.get_patches_fp(path_cur + 'diffs/')
         self.fun_patches = aux.get_patches(path_cur + 'fun_diffs/')
-        self.cu_patches = aux.get_patch_lst_by_cu(path_cur + 'diffs/')
+        cu_patches = aux.get_patch_lst_by_cu(path_cur + 'diffs/')
         self.fun_patches_nf = aux.get_patches(path_cur + 'funs_nin_cur/')
 #        self.fun_patches_mv = aux.get_patches(path_cur + 'funs_moved/')
 
@@ -168,13 +168,14 @@ class worker:
         print("N Res: %d" % self.cnt_funs(not_res))
 
         funs_renamed = self.get_funs(ren)
-        self.funs_removed = self.get_rm_funs(n_in_nex, funs_renamed)
+        funs_removed = self.get_rm_funs(n_in_nex, funs_renamed)
+
+        l_added, res_commits = self.get_lines_mod(added)
+        removed ,b = self.check_removed(funs_removed, cu_patches)
         if conf.VALIDATION == True:
             validation.print_val_added(added)
-        l_added. res_commits = self.get_lines_mod(added)
-        #l_removed = self.get_lines_mod(funs_removed)
-
-        #print_renamed(renamed)
+            validation.print_val_removed(removed)
+            validation.print_val_renamed(ren)
 
     def get_rm_funs(self, n_in_nex, funs_renamed):
         data = {}
@@ -365,12 +366,68 @@ class worker:
                     return decl, fun
         return None, None
 
+    def check_removed(self, data, patch_data):
+        result = {}
+        commits = []
+        for cu in data.keys():
+            for fun in data[cu].keys():
+                if cu + '.fl' in self.fun_def_len_cur.keys():
+                    if not fun in self.fun_def_len_cur[cu + '.fl'].keys():
+                        print("Fun %s  cannot be found in current tree" % fun)
+                        continue
+                flag = False
+                info = self.fun_def_len_cur[cu+'.fl'][fun]
+                len_rm = info['end'] - info['start']
+                if len_rm == 0:
+                    continue
+                if not cu in patch_data.keys():
+                    continue
+                for patch in patch_data[cu]:
+                    for item in patch['items']:
+                        for hunk in item.hunks:
+                            ht = st.get_hunk_rm_text(hunk)
+                            _decl = data[cu][fun]['decl']['src']
+                            decl = []
+                            for t in _decl:
+                                decl.append(t.replace('\t','').lstrip(' '))
+                            for k, i in enumerate(ht):
+                                if decl[0] in i:
+                                    if decl == ht[k:k+len(decl)]:
+                                        print(" ------ ------ ------")
+                                        print("D: %s" % decl[0])
+                                        print(patch['patch'])
+                                        print("RM: %d" % len_rm)
+                                        print('*** declaration ***')
+                                        for t in decl:
+                                            print(t)
+
+                                        print('*** hunk text ***')
+                                        hunk_text = ht[k:k+len_rm+len(decl)]
+                                        for t in ht[k:k+len_rm+len(decl)]:
+                                            print("-%s" % t)
+
+                                        flag = True
+                                        if not cu in result.keys():
+                                            result.update({cu:{}})
+                                        result[cu].update({fun: {
+                                                         'pname': patch['patch'],
+                                                         'cu': cu,
+                                                         'htext':hunk_text,
+                                                         'len': len_rm + len(decl),
+                                                        }})
+                                        commits.append(patch['commit'])
+                                        break
+
+                        if flag == True:
+                            break
+
+        return result, commits
+
     def check_not_in_cur(self, data, patch_data):
         not_found = {}
-        not_found_by_cu = {}
         found = {}
         added = {}
-        #
+
         for cu in data.keys():
             for fun in data[cu]:
                 flag = False
@@ -387,12 +444,6 @@ class worker:
                     for item in patch.items:
                         for hunk in item.hunks:
                             ht = st.hunk_decode(hunk)
-                            if fun == '__spi_register_driver':
-                                print("x: %s" % ht[3].rstrip('\n'))
-                                print("__: %s" % decl_nex[0] == ht[3].rstrip('\n'))
-                                print("D: |%s|" % decl_nex[0])
-                                for i in ht:
-                                    print(i)
 
                             for line in ht:
                                 if decl_nex[0] == line[1:].rstrip('\n') :
@@ -428,6 +479,8 @@ class worker:
                                             added.update({cu:{}})
                                         patch_name = aux.find_commit(
                                                         self.diff_path, commit)
+                                        add_len = body_end = body_start
+                                        add_len += len(decl_nex)
                                         added[cu].update({fun: {
                                                           'decl_nex': decl_nex,
                                                           'patch': patch,
@@ -441,11 +494,6 @@ class worker:
                     if flag == False:
                         # if there is only declration but no body seems
                         # like define/macro
-                        body_start = self.fun_def_len_nex[cu+'.fl'][fun]['start']
-                        body_end = self.fun_def_len_nex[cu+'.fl'][fun]['end']
-                        if body_start == body_end:
-                            print("+++> Fun: %s seems to be define macro" % fun)
-                            continue
                         if not cu in not_found.keys():
                             not_found.update({cu:{}})
                         if not fun in not_found[cu]:
@@ -469,6 +517,7 @@ class worker:
         for cu in data.keys():
             for fun in data[cu].keys():
                 l.append(data[cu][fun]['fun_old'])
+                l.append(fun)
         return l
 
 
