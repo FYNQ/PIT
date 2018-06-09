@@ -95,12 +95,12 @@ def print_val_renamed(data):
             it = data[cu][fun]
             l = []
             header['header'] = "Validation rename of function %s to %s" %\
-                    (fun, it['fun_old'])
+                    (it['fun_old'], fun)
             header['keywords'] = 'rename function %s to %s' % \
-                    (fun, it['fun_old'])
+                    (it['fun_old'], fun)
             fname = '%s/functions_renamed/%s.val' % (path_validation, cnt)
 
-            l.append("# Fun ren: %s->%s\n\n" % (it['fun_old'], fun))
+            l.append("# Fun ren: %s -> %s\n\n" % (it['fun_old'], fun))
             l.append("# File: %s\n\n" % it['cu'])
             l.append("# Patch: %s\n\n" % it['pname'])
             l.append("# Hunk text:\n\n")
