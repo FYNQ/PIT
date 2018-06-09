@@ -134,21 +134,15 @@ class worker:
         self.not_in_cur = n_in_cur
         self.fun_diffs = fun_diffs
         self.not_in_nex = n_in_nex
-        self.logger.info("Create function diffs!\n")
+        self.logger.info("Create function diffs!")
         diff_jobs = []
-        print("functions total %d "  % len(funs))
+        self.logger.info("functions total %d "  % len(funs))
 
-        #aux.mk_git_diff_funs(conf.LINUX_SRC, path_cur, tag_cur, tag_nex, funs,
-        #                                                self.logger)
-
-        print("functions not in current")
+        self.logger.info("functions not in current")
         self.funs_nin_cur = self.create_diffs(conf.LINUX_SRC, n_in_cur,
                                             'funs_nin_cur', tag_cur, tag_nex)
-        #self.funs_nin_nex = self.create_diffs(conf.LINUX_SRC, n_in_nex,
-        #                                    'funs_nin_nex', tag_cur, tag_nex)
 
-
-        print("functions moved")
+        self.logger.info("functions moved")
         self.moved = self.create_diffs(conf.LINUX_SRC, fun_mv,
                                             'funs_moved', tag_cur, tag_nex)
 
@@ -157,15 +151,15 @@ class worker:
         self.fun_patches = aux.get_patches(path_cur + 'fun_diffs/')
         cu_patches = aux.get_patch_lst_by_cu(path_cur + 'diffs/')
         self.fun_patches_nf = aux.get_patches(path_cur + 'funs_nin_cur/')
-#        self.fun_patches_mv = aux.get_patches(path_cur + 'funs_moved/')
 
         ren, added, not_res = self.check_not_in_cur(n_in_cur, self.fun_patches_nf)
         self.get_stats(fun_diffs, ren, added)
         self.added = added
         self.ren = ren
-        print("Renamed  : %d" % self.cnt_funs(ren))
-        print("Added: %d" % self.cnt_funs(added))
-        print("N Res: %d" % self.cnt_funs(not_res))
+        self.logger.info("Number of renamed functions: %d" % self.cnt_funs(ren))
+        self.logger.info("Number of addded functions: %d" % self.cnt_funs(added))
+        self.logger.info("Number of not resolved functions: %d" %
+                                                        self.cnt_funs(not_res))
 
         funs_renamed = self.get_funs(ren)
         funs_removed = self.get_rm_funs(n_in_nex, funs_renamed)
@@ -249,23 +243,16 @@ class worker:
         for cu in data:
             for fun in data[cu]:
                 it = data[cu][fun]
-                print("-----------------------------------")
-                print("Function: %s" % fun)
-                print("Patch   : %s" % it['pname'])
-                print("File    : %s" % cu)
                 start = self.fun_def_len_nex[cu + '.fl'][fun]['start']
                 end = self.fun_def_len_nex[cu + '.fl'][fun]['end']
                 parsed = sorted(self.parsed_nex[cu + '.pre'])
                 pre_data = self.get_pre_data(parsed, start, end)
-                if pre_data == None:
-                    print("Missing parse info !! ")
-                else:
+                if pre_data != None:
                     cnt = len(pre_data)
                     l_cnt += cnt
                     if it['commit'] not in commits:
                         commits.append(it['commit'])
 
-                    print("modified : %d" % cnt)
 
         return l_cnt, commits
 
@@ -288,8 +275,6 @@ class worker:
                                 self.parsed_cur, self.parsed_nex, p_it,
                                 self.fun_patches_nf[fun])
         return res, l_add_t, l_rm_t, l_add_f, l_rm_f, shas
-                #pp.pprint(res)
-#                print(XX)
 
     def get_mod_in_fun(self, diffs):
         """ Get modification between two versions of a function.
@@ -325,10 +310,10 @@ class worker:
 
         for fun in diffs.keys():
             if fun not in self.fun_patches.keys():
-                print("Missing patch for fun: %s" % fun)
+                self.logger.info("Missing patch for fun: %s" % fun)
                 continue
             if self.fun_patches[fun] == False:
-                print("Missing fun diff: %s" % fun)
+                self.logger.info("Missing fun diff: %s" % fun)
                 continue
             else:
                 res, l_add_t, l_rm_t, l_add_f, l_rm_f,commits = st.get_mod_fun(fun,
@@ -356,15 +341,14 @@ class worker:
 
         return result, l_i_add_t, l_i_rm_t, l_i_add_f, l_i_rm_f, commits_app
 
-
     def decl_in_patch(self, data, cu, hunk_text):
         for fun in data[cu].keys():
             decl = data[cu][fun]['src']
             for line in hunk_text:
-                if decl[0] in line[1:].rstrip('\n'):
-                    print("Found decl %s of fun: %s" % (decl, fun))
+                if decl[0] in line.rstrip('\n'):
                     return decl, fun
         return None, None
+
 
     def check_removed(self, data, patch_data):
         result = {}
@@ -373,7 +357,8 @@ class worker:
             for fun in data[cu].keys():
                 if cu + '.fl' in self.fun_def_len_cur.keys():
                     if not fun in self.fun_def_len_cur[cu + '.fl'].keys():
-                        print("Fun %s  cannot be found in current tree" % fun)
+                        self.logger.info("Fun %s  cannot be found in current tree"
+                                                                            % fun)
                         continue
                 flag = False
                 info = self.fun_def_len_cur[cu+'.fl'][fun]
@@ -393,19 +378,7 @@ class worker:
                             for k, i in enumerate(ht):
                                 if decl[0] in i:
                                     if decl == ht[k:k+len(decl)]:
-                                        print(" ------ ------ ------")
-                                        print("D: %s" % decl[0])
-                                        print(patch['patch'])
-                                        print("RM: %d" % len_rm)
-                                        print('*** declaration ***')
-                                        for t in decl:
-                                            print(t)
-
-                                        print('*** hunk text ***')
                                         hunk_text = ht[k:k+len_rm+len(decl)]
-                                        for t in ht[k:k+len_rm+len(decl)]:
-                                            print("-%s" % t)
-
                                         flag = True
                                         if not cu in result.keys():
                                             result.update({cu:{}})
@@ -437,23 +410,22 @@ class worker:
                     body_start = self.fun_def_len_nex[cu+'.fl'][fun]['start']
                     body_end = self.fun_def_len_nex[cu+'.fl'][fun]['end']
                     if body_start == body_end:
-                        print("+++> Fun: %s seems to be define macro" % fun)
+                        self.logger.info("##Fun: %s could be define macro" % fun)
                         continue
 
                     commit = aux.get_hash(patch.items[0].header)
                     for item in patch.items:
                         for hunk in item.hunks:
                             ht = st.hunk_decode(hunk)
-
-                            for line in ht:
-                                if decl_nex[0] == line[1:].rstrip('\n') :
-                                    hunkfind = [x[1:].rstrip(b"\r\n")
+                            hunkfind = [x[1:].rstrip(b"\r\n").decode('utf-8')
                                             for x in hunk.text if x[0] in b" -"]
-                                    hunkreplace = [x[1:].rstrip(b"\r\n")
+                            hunkreplace = [x[1:].rstrip(b"\r\n").decode('utf-8')
                                             for x in hunk.text if x[0] in b" + "]
-                                    print("function %s in hunk add" % fun)
-                                    r,fun_o = self.decl_in_patch(self.fun_decl_cur,
-                                                                        cu, ht)
+                            for line in hunkreplace:
+                                if decl_nex[0] == line.rstrip('\n') :
+                                    r,fun_o = self.decl_in_patch(
+                                                   self.fun_decl_cur, cu, hunkfind)
+
                                     flag = True
                                     if r != None:
                                         if not cu in found.keys():
@@ -501,7 +473,7 @@ class worker:
                                                         'data': data[cu][fun],
                                                         'commit': commit,}})
                 else:
-                    print("---> No patch for fun: %s available" % fun)
+                    self.logger.info("---> No patch for fun: %s available" % fun)
 
         return found, added, not_found
 
@@ -520,36 +492,6 @@ class worker:
                 l.append(fun)
         return l
 
-
-def print_added(data):
-    for cu in data:
-        for fun in data[cu]:
-            it = data[cu][fun]
-            print("-----------------------------------")
-            print("Function: %s" % fun)
-            print("Patch   : %s" % it['pname'])
-            print("File    : %s" % cu)
-            for i in it['htext']:
-                print(i)
-
-
-
-def print_renamed(data):
-    for cu in data:
-        for fun in data[cu]:
-            items = data[cu][fun]
-            for it in items:
-                print("-------------------------------")
-                print("Fun ren : %s->%s " % (it['fun_old'], fun))
-                print("File    : %s" % it['cu'])
-                print("Patch   : %s" % it['pname'])
-                for i in it['htext']:
-                    print(i)
-
-def find_fun(data, fun):
-    for cu in data.keys():
-        if fun in data[cu]:
-            print("cu: %s" % cu)
 
 
 path_cur = '/home/markus/work_ot/PIT/build/v4.3/ppc_men_defconfig/'
