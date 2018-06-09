@@ -2,10 +2,10 @@ import os
 import pprint
 import logging
 from multiprocessing import Pool
+import json
 import aux
 import conf
 import src_tools as st
-
 pp = pprint.PrettyPrinter(indent=4)
 
 
@@ -67,11 +67,19 @@ class worker:
         if not os.path.exists(path_cur + '/debug_data'):
             os.makedirs(path_cur + '/debug_data')
 
+        self.data_out_funs = []
+        self.l_insn_add = 0
+        self.l_insn_rm = 0
 
         self.l_insn_add_t = 0
         self.l_insn_rm_t = 0
         self.l_insn_add_f = 0
         self.l_insn_rm_f = 0
+        self.l_fun_add = 0
+        self.l_fun_rm = 0
+        self.cnt_fun_rm = 0
+        self.cnt_fun_add = 0
+        self.cnt_fun_ren = 0
 
         logger_name = "checker_%s" % tag_cur
         aux.setup_logger(logger_name, path_cur + "/check_series.log")
@@ -116,84 +124,85 @@ class worker:
                         (tag_cur, self.cnt_funs(self.fun_src_cur)))
         self.logger.info("function in tag %s: %d\n" %
                         (tag_nex, self.cnt_funs(self.fun_src_nex)))
+        self.logger.info("Create function diffs!")
         fun_diffs, funs, fun_mv, n_in_cur, n_in_nex = st.gen_funs_diff(path_cur,
                                                        self.fun_src_cur,
                                                        self.fun_src_nex,
                                                        self.fun_decl_cur,
                                                        self.fun_decl_nex)
-
+        self.funs_tot = len(funs)
+        self.logger.info("functions total %d "  % len(funs))
 
         self.logger.info("function not in current %d\n" %
                         (self.cnt_funs(n_in_cur)))
         self.logger.info("function not in next %d\n" %
                         (self.cnt_funs(n_in_nex)))
 
-
-
         self.fun_moved = fun_mv
         self.not_in_cur = n_in_cur
         self.fun_diffs = fun_diffs
         self.not_in_nex = n_in_nex
-        self.logger.info("Create function diffs!")
         diff_jobs = []
-        self.logger.info("functions total %d "  % len(funs))
 
-        self.logger.info("functions not in current")
+        self.logger.info("Create diffs functions not in current")
         self.funs_nin_cur = self.create_diffs(conf.LINUX_SRC, n_in_cur,
                                             'funs_nin_cur', tag_cur, tag_nex)
 
-        self.logger.info("functions moved")
+        self.logger.info("Create diffs moved functions")
         self.moved = self.create_diffs(conf.LINUX_SRC, fun_mv,
                                             'funs_moved', tag_cur, tag_nex)
 
         self.logger.info("Get patch information!")
         self.format_patches = aux.get_patches_fp(path_cur + 'diffs/')
         self.fun_patches = aux.get_patches(path_cur + 'fun_diffs/')
-        cu_patches = aux.get_patch_lst_by_cu(path_cur + 'diffs/')
+        self.cu_patches = aux.get_patch_lst_by_cu(path_cur + 'diffs/')
         self.fun_patches_nf = aux.get_patches(path_cur + 'funs_nin_cur/')
 
-        ren, added, not_res = self.check_not_in_cur(n_in_cur, self.fun_patches_nf)
-        self.get_stats(fun_diffs, ren, added)
-        self.added = added
-        self.ren = ren
-        self.logger.info("Number of renamed functions: %d" % self.cnt_funs(ren))
-        self.logger.info("Number of addded functions: %d" % self.cnt_funs(added))
-        self.logger.info("Number of not resolved functions: %d" %
-                                                        self.cnt_funs(not_res))
+        self.process()
 
-        funs_renamed = self.get_funs(ren)
-        funs_removed = self.get_rm_funs(n_in_nex, funs_renamed)
+        # calculate and print out stats
+        self.l_insn_add = self.l_insn_add_t + self.l_insn_add_f + self.l_fun_add
+        self.l_insn_rm = self.l_insn_rm_t + self.l_insn_rm_f + self.l_fun_rm
+        fname_f = self.path_cur + 'functions_data.json'
+        fname_s = self.path_cur + 'summary_data.json'
+        tag_date = aux.get_commit_time_sec(self.tag_cur, conf.LINUX_SRC)
+        summary = {'tag': self.tag_cur, 'date': tag_date,
+                   'lines_add': self.l_insn_add, 'lines_rm': self.l_insn_rm,
+                   'funs_tot': self.funs_tot,
+                   'funs_rm': self.cnt_fun_rm,
+                   'funs_add': self.cnt_fun_add,
+                   'funs_ren': self.cnt_fun_ren}
 
-        l_added, res_commits = self.get_lines_mod(added)
-        removed ,b = self.check_removed(funs_removed, cu_patches)
-        if conf.VALIDATION == True:
-            validation.print_val_added(added)
-            validation.print_val_removed(removed)
-            validation.print_val_renamed(ren)
+        with open(fname_f, 'w') as outfile:
+            json.dump(self.data_out_funs, outfile)
+        with open(fname_s, 'w') as outfile:
+            json.dump(summary, outfile)
 
-    def get_rm_funs(self, n_in_nex, funs_renamed):
+
+
+    def get_rm_funs(self, funs_renamed):
         data = {}
-        for cu in n_in_nex.keys():
-            for fun in n_in_nex[cu].keys():
+        for cu in self.not_in_nex.keys():
+            for fun in self.not_in_nex[cu].keys():
                 if not fun in funs_renamed:
                     if not cu in data.keys():
                         data.update({cu:{}})
-                    data[cu].update({fun : n_in_nex[cu][fun]})
+                    data[cu].update({fun : self.not_in_nex[cu][fun]})
 
         return data
 
 
-    def get_stats(self, data, renamed, added):
+    def process(self):
         l_struct_add = 0
         l_struct_rm = 0
         commits_insn_applied = []
-        tag_date = aux.get_commit_time_sec(self.tag_cur, conf.LINUX_SRC)
 
         self.logger.info("Get stats for function diffs ...\n")
-        r_fun, l_a_t, l_r_t, l_a_f, l_r_f, shas_fun = self.get_mod_in_fun(data)
+        r_fun, l_a_t, l_r_t, l_a_f, l_r_f, shas_fun = self.get_mod_in_fun(
+                                                                self.fun_diffs)
         self.l_insn_add_t += l_a_t
-        self.l_insn_rm_t += l_r_t
         self.l_insn_add_f += l_a_f
+        self.l_insn_rm_t += l_r_t
         self.l_insn_rm_f += l_r_f
 
         for commit in shas_fun:
@@ -201,11 +210,44 @@ class worker:
                 self.commits_insn_applied.append(commit)
 
         self.logger.info("Get stats for added functions ...\n")
-        r_ren, l_a_t, l_r_t, l_a_f, l_r_f, shas_fun =self.get_mod_of_ren(renamed)
+        ren, added, not_res = self.check_not_in_cur()
+        r_ren, d_o, l_a_t, l_r_t, l_a_f, l_r_f, shas_fun = self.get_mod_of_ren(ren)
+        self.data_out_funs.append(d_o)
         self.l_insn_add_t += l_a_t
-        self.l_insn_rm_t += l_r_t
         self.l_insn_add_f += l_a_f
+        self.l_insn_rm_t += l_r_t
         self.l_insn_rm_f += l_r_f
+
+        self.ren = ren
+        funs_renamed = self.get_funs(ren)
+        funs_removed = self.get_rm_funs(funs_renamed)
+
+        self.l_fun_add, d_o, commits = self.get_lines_mod(added)
+        self.data_out_funs.append(d_o)
+        for commit in commits:
+            if commit not in commits_insn_applied:
+                self.commits_insn_applied.append(commit)
+
+        removed, d_o, commits, self.l_fun_rm = self.check_removed(funs_removed,
+                                                         self.cu_patches)
+        self.data_out_funs.append(d_o)
+        for commit in commits:
+            if commit not in commits_insn_applied:
+                self.commits_insn_applied.append(commit)
+
+        if conf.VALIDATION == True:
+            validation.print_val_added(added)
+            validation.print_val_removed(removed)
+            validation.print_val_renamed(ren)
+        self.cnt_fun_rm = self.cnt_funs(removed)
+        self.cnt_fun_add = self.cnt_funs(added)
+        self.cnt_fun_ren = self.cnt_funs(ren)
+        self.logger.info("Number of renamed functions: %d" % self.cnt_funs(ren))
+        self.logger.info("Number of addded functions: %d" % self.cnt_funs(added))
+        self.logger.info("Number of not resolved functions: %d" %
+                                                        self.cnt_funs(not_res))
+
+
 
 
     def create_diffs(self, git_linux, data, path, tag_cur, tag_nex):
@@ -240,6 +282,7 @@ class worker:
     def get_lines_mod(self, data):
         l_cnt = 0
         commits = []
+        data_out = []
         for cu in data:
             for fun in data[cu]:
                 it = data[cu][fun]
@@ -252,12 +295,17 @@ class worker:
                     l_cnt += cnt
                     if it['commit'] not in commits:
                         commits.append(it['commit'])
+                    data_out.append((fun, cnt, 0))
 
 
-        return l_cnt, commits
+        return l_cnt, data_out, commits
 
     def get_mod_of_ren(self, data):
+        result = {}
+        data_out = []
         for cu in data.keys():
+            if not cu in result.keys():
+                result.update({cu:{}})
             for fun in data[cu]:
                 it = data[cu][fun]
                 fun_old = it['fun_old']
@@ -274,7 +322,11 @@ class worker:
                                 fun, self.insns_cur, self.insns_nex,
                                 self.parsed_cur, self.parsed_nex, p_it,
                                 self.fun_patches_nf[fun])
-        return res, l_add_t, l_rm_t, l_add_f, l_rm_f, shas
+                result[cu].update({fun:res})
+                fun_i = "%s->%s" % (fun_old ,fun)
+                data_out.append(((fun_i),l_add_t + l_add_f, l_rm_t + l_rm_f))
+
+        return result, data_out, l_add_t, l_rm_t, l_add_f, l_rm_f, shas
 
     def get_mod_in_fun(self, diffs):
         """ Get modification between two versions of a function.
@@ -353,6 +405,8 @@ class worker:
     def check_removed(self, data, patch_data):
         result = {}
         commits = []
+        len_rm_tot = 0
+        data_out = []
         for cu in data.keys():
             for fun in data[cu].keys():
                 if cu + '.fl' in self.fun_def_len_cur.keys():
@@ -382,36 +436,36 @@ class worker:
                                         flag = True
                                         if not cu in result.keys():
                                             result.update({cu:{}})
+                                        _l = len_rm + len(decl)
                                         result[cu].update({fun: {
                                                          'pname': patch['patch'],
                                                          'cu': cu,
                                                          'htext':hunk_text,
-                                                         'len': len_rm + len(decl),
+                                                         'len': _l,
                                                         }})
+                                        len_rm_tot += len_rm + len(decl)
                                         commits.append(patch['commit'])
+                                        data_out.append((fun,0 ,_l))
                                         break
 
                         if flag == True:
                             break
 
-        return result, commits
+        return result, data_out, commits, len_rm_tot
 
-    def check_not_in_cur(self, data, patch_data):
+    def check_not_in_cur(self):
         not_found = {}
         found = {}
         added = {}
 
-        for cu in data.keys():
-            for fun in data[cu]:
+        for cu in self.not_in_cur.keys():
+            for fun in self.not_in_cur[cu]:
                 flag = False
-                if fun in patch_data:
-                    patch = patch_data[fun]
+                if fun in self.fun_patches_nf:
+                    patch = self.fun_patches_nf[fun]
                     decl_nex = self.fun_decl_nex[cu][fun]['src']
                     body_start = self.fun_def_len_nex[cu+'.fl'][fun]['start']
                     body_end = self.fun_def_len_nex[cu+'.fl'][fun]['end']
-                    if body_start == body_end:
-                        self.logger.info("##Fun: %s could be define macro" % fun)
-                        continue
 
                     commit = aux.get_hash(patch.items[0].header)
                     for item in patch.items:
@@ -466,11 +520,17 @@ class worker:
                     if flag == False:
                         # if there is only declration but no body seems
                         # like define/macro
+                        if body_start == body_end:
+                            self.logger.info("Fun: %s could macro or fun with \
+                                              body len 0" % fun)
+                            continue
+
                         if not cu in not_found.keys():
                             not_found.update({cu:{}})
                         if not fun in not_found[cu]:
+                            data = self.not_in_cur[cu][fun]
                             not_found[cu].update({fun: {'decl_nex': decl_nex,
-                                                        'data': data[cu][fun],
+                                                        'data': data,
                                                         'commit': commit,}})
                 else:
                     self.logger.info("---> No patch for fun: %s available" % fun)
