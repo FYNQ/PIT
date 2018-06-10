@@ -1,7 +1,7 @@
 import os
 import subprocess
 import mmap
-
+import codecs
 import json
 import logging
 import sort_patches as sortp
@@ -292,6 +292,112 @@ def get_patches_fp(path):
 
     return patch_lst
 
+def git_export(src, dst, tag, logger):
+    cmd = "git archive --format=tar.gz %s > %s/%s.tar.gz" % (tag, dst, tag)
+    do_cmd(cmd, src, logger)
 
+    if not os.path.isdir(dst + '/linux-stable'):
+        os.makedirs(dst + '/linux-stable')
+
+    cmd = "tar -xf %s/%s.tar.gz -C %s/linux-stable" % (dst, tag, dst)
+    do_cmd(cmd, dst , logger)
+
+    cmd = "rm %s/%s.tar.gz" % (dst,tag)
+    do_cmd(cmd, dst, logger)
+
+
+def create_patch_series(from_tag, to_tag, path, opath, logger):
+    """git format-patch implementation
+
+    :param from_tag: starting tag
+    :param to_tag: end tag
+    :param path: source path location
+    :param opath: output path where diffs has to be stored
+    :param logger: logger reference in case stdout output needs to be logged
+
+    :returns: No return value
+    """
+    cmd = "git format-patch %s..%s -o %s > /dev/null" % (from_tag, to_tag, opath)
+    do_cmd(cmd, path, logger)
+    fix_utf("patch", opath)
+
+
+
+
+def do_fix(fpath, _line):
+    """ Fix files with non utf8 character found by cmd line tool isutf
+
+    :param fpath: base path
+    :param fname: line number with non utf8 compliant character
+
+    :returns: Data or None if file not exists or json cannot be read
+    """
+    line = _line.decode('utf-8').split(' ')
+    fname = line[0]
+    if len(fname) > 0:
+        print("fix utf-8: %s" % (fpath + fname[1:-1]))
+        fin = codecs.open(fpath + fname[1:-1], 'r',
+                        encoding='utf-8', errors='replace')
+        inbuf = fin.read()
+        fin.close()
+        fout = codecs.open(fpath + fname[1:-1], 'w',
+                           encoding='utf-8', errors='replace')
+        fout.write(inbuf)
+        fout.close()
+
+
+def fix_utf(ftype, fpath):
+    """Thanx do some stupid developers using non utf-8 characters we have to \
+       check sources for non utf-8 characters
+
+    :param ftype: normaly .c and .h files are scanned
+    :param fpath: base path of the linux kernel source
+
+    :returns: No return value
+    """
+    cmd = "find -iname \"*." + ftype + "\"  -not -path .git | xargs isutf8"
+    process = subprocess.Popen(cmd, cwd=fpath, shell=True,
+                               stdout=subprocess.PIPE,
+                               stderr=subprocess.PIPE)
+
+    # wait for the process to terminate
+    process.wait()
+    for line in process.stdout:
+        do_fix(fpath, line)
+    errcode = process.returncode
+
+
+def is_patched(path, patch_name):
+    """Check if file patched by patch with patch_name
+
+    :param path: base path of source
+    :param patch_name: file name of patch
+
+    :returns: 1 not patched, 0 patched
+    """
+    cmd = "patch -N --dry-run --silent -p1<%s" % patch_name
+    print(cmd)
+    pr = subprocess.Popen(cmd, cwd=path, shell=True, stdout=subprocess.PIPE)
+    pr.wait()
+    return (pr.returncode)
+
+
+def patch_req(path, req_path, reqs, logger):
+    """ Some kernel versions need to be patches before they can be compiled \
+        with a news GCC version (gcc-6.3.0)
+
+    :param path: base path
+    :param rqu_patch: required patch
+
+    :returns: No return value
+    """
+    for req in reqs:
+        if len(req) > 0:
+            patch_file = "%s/%s" % (req_path, req)
+            res = is_patched(path, patch_file)
+            if res != 1:
+                print("not patched!")
+                cmd = "patch -p1<%s/%s" % (req_path, req)
+                do_cmd(cmd, path, logger)
 
 
