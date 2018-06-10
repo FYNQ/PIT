@@ -447,16 +447,20 @@ def gen_funs_diff(path, src_cur, src_next, decl_cur, decl_next):
                         fun_info_nex = src_next[cu][fun]["info"]
                         start = decl_next[cu][fun]["info"]["start"]
                         end = src_next[cu][fun]["info"]["end"]
-                        funs_in_cur.update({fun:{'start': start,
-                                          'end': end,
-                                          'cu': cu}})
+                        if not cu in funs_in_cur.keys():
+                            funs_in_cur.update({cu:{}})
+
+                        funs_in_cur[cu].update({fun:{'start': start,
+                                                     'end': end}})
 
                     elif state == 'mov':
                         fun_info_nex = src_next[fun_mov][fun]["info"]
                         start = fun_info_nex["start"]
                         end = fun_info_nex["end"]
+                        if not fun_mov in funs_in_cur.keys():
+                            funs_in_cur.update({fun_mov:{}})
 
-                        funs_in_cur.update({fun:{'start': start,
+                        funs_in_cur[fun_mov].update({fun:{'start': start,
                                           'end': end,
                                           'old_cu': cu,
                                           'cu': fun_mov}})

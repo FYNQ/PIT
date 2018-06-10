@@ -59,7 +59,7 @@ def analyse_fun_diffs(fun_patches, cu_patches):
 class worker:
     def __init__(self, path_cur, path_nex, tag_cur, tag_nex, arch):
         self.commits_insn_applied = []
-
+        print("** %s %s " % (path_cur,path_nex))
         if not os.path.exists(path_cur + '/fun_diffs'):
             os.makedirs(path_cur + '/fun_diffs')
         if not os.path.exists(path_cur + '/struct_diffs'):
@@ -130,6 +130,11 @@ class worker:
                                                        self.fun_src_nex,
                                                        self.fun_decl_cur,
                                                        self.fun_decl_nex)
+        self.logger.info("Create diffs for functions")
+        self.funs_nin_cur = self.create_diffs(conf.LINUX_SRC, funs,
+                                            'fun_diffs', tag_cur, tag_nex)
+
+
         self.funs_tot = len(funs)
         self.logger.info("functions total %d "  % len(funs))
 
@@ -143,6 +148,7 @@ class worker:
         self.fun_diffs = fun_diffs
         self.not_in_nex = n_in_nex
         diff_jobs = []
+
 
         self.logger.info("Create diffs functions not in current")
         self.funs_nin_cur = self.create_diffs(conf.LINUX_SRC, n_in_cur,
@@ -260,7 +266,7 @@ class worker:
             for fun in data[cu].keys():
                 start = data[cu][fun]['start']
                 end = data[cu][fun]['end']
-                out_path = path_cur + path
+                out_path = self.path_cur + path
                 aux.git_make_fun_diff(git_linux, out_path, tag_cur, tag_nex,
                                             start, end, cu, fun, self.logger)
 
