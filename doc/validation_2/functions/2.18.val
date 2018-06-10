@@ -1,0 +1,113 @@
+
+PIT Validation - fun: run_filter
+
+Author: Markus Kreidl
+Review: Reviewer (if applicable else ----)
+Date: 2018-04-05
+Expires: 000
+Keywords: validation function run_filter
+Status: initial draft
+Phase: validation
+Ref:
+QA: initial
+Tracking: ?
+Format: ascii text
+
+
+# Validation function
+
+run_filter        net/packet/af_packet.c
+
+## Result PIT
+
+-PATCH: 5483-bpf-fix-cb-access-in-socket-filter-programs.patch
+
+{   'add_cnt_f': 2,
+    'add_cnt_t': 2,
+    'commit': 'ff936a04e5f28b7e0455be0e7fa91334f89e4b44',
+    'cu': 'net/packet/af_packet.c',
+    'fun': 'run_filter',
+    'lines_add': [(1942, True), (1943, False), (1944, False), (1951, True)],
+    'lines_rm': [(1942, True), (1943, False), (1944, False), (1951, True)],
+    'rm_cnt_f': 2,
+    'rm_cnt_t': 2}
+
+
+
+## Create git diff with showlinenum
+
+$ git diff v4.3 net/packet/af_packet.c | ./showlinenum.awk > run_filter.diff
+
+Extract section for function run_filter
+
+    :-static unsigned int run_filter(const struct sk_buff *skb,
+    :-                    const struct sock *sk,
+    :-                    unsigned int res)
+1942:+static unsigned int run_filter(struct sk_buff *skb,
+1943:+                 const struct sock *sk,
+1944:+                 unsigned int res)
+1945: {
+1946:   struct sk_filter *filter;
+1947: 
+1948:   rcu_read_lock();
+1949:   filter = rcu_dereference(sk->sk_filter);
+1950:   if (filter != NULL)
+    :-      res = SK_RUN_FILTER(filter, skb);
+1951:+      res = bpf_prog_run_clear_cb(filter->prog, skb);
+1952:   rcu_read_unlock();
+1953: 
+1954:   return res;
+
+
+Removed Lines:
+
+Check lines from 1942 to 1944
+
+$ sed -n '1942,1944p' net/packet/af_packet.c
+static unsigned int run_filter(const struct sk_buff *skb,
+				      const struct sock *sk,
+				      unsigned int res)
+
+
+
+Check line 1951 in cu: net/packet/af_packet.c
+
+$sed -n '1951,1951p' net/packet/af_packet.c
+		res = SK_RUN_FILTER(filter, skb);
+
+
+## Verify patch
+
+@@ -1939,16 +1939,16 @@ out_free:
+    return err;
+ }
+
+-static unsigned int run_filter(const struct sk_buff *skb,
+-                     const struct sock *sk,
+-                     unsigned int res)
++static unsigned int run_filter(struct sk_buff *skb,
++                  const struct sock *sk,
++                  unsigned int res)
+ {
+    struct sk_filter *filter;
+
+    rcu_read_lock();
+    filter = rcu_dereference(sk->sk_filter);
+    if (filter != NULL)
+-       res = SK_RUN_FILTER(filter, skb);
++       res = bpf_prog_run_clear_cb(filter->prog, skb);
+    rcu_read_unlock();
+
+    return res;
+
+
+## Result
+
+lines added   : ok
+lines removed : ok
+line numbers  : ok
+
+
+## Comment
+
+Changed declarations are not considered as instruction modifications.

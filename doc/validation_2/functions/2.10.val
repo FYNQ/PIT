@@ -1,0 +1,194 @@
+
+PIT Validation - fun: talitos_edesc_alloc
+
+Author: Markus Kreidl
+Review: Reviewer (if applicable else ----)
+Date: 2018-04-05
+Expires: 000
+Keywords: setup, configuration, pit
+Status: initial draft
+Phase: validation
+Ref:
+QA: initial
+Tracking: ?
+Format: ascii text
+
+
+# Validate function
+
+talitos_edesc_alloc   drivers/crypto/talitos.c
+
+## Result PIT
+
+Modifed 1 patch.
+
+-PATCH: 3620-crypto-talitos-dma_map_sg-can-handle-chained-SG.patch
+
+{   'add_cnt_f': 0,    
+    'add_cnt_t': 6,                             
+    'commit': 'b8a011d41c988aeb9aa199eb80ccd5179b5940c1',
+    'cu': 'drivers/crypto/talitos.c',
+    'fun': 'talitos_edesc_alloc',         
+    'lines_add': [   (1229, True),         
+                     (1230, True),
+                     (1234, True),
+                     (1235, True),
+                     (1237, True),
+                     (1238, True)],
+    'lines_rm': [   (1273, True),
+                    (1290, True),
+                    (1291, True),
+                    (1295, True),
+                    (1296, True),
+                    (1297, True),
+                    (1299, True),
+                    (1300, True),
+                    (1301, True),
+                    (1335, True),
+                    (1336, True)],
+    'rm_cnt_f': 0,
+    'rm_cnt_t': 11}
+
+
+
+## Create git diff with showlinenum
+
+$ git diff v4.3  drivers/crypto/talitos.c | ./showlinenum.awk > talitos_edesc_alloc.diff
+
+Extract section for function talitos_edesc_alloc
+
+@@ -1270,7 +1210,6 @@ static struct talitos_edesc *talitos_edesc_alloc(struct      device *dev, 
+1210: { 
+1211:   struct talitos_edesc *edesc; 
+1212:   int src_nents, dst_nents, alloc_len, dma_len; 
+    :-  bool src_chained = false, dst_chained = false; 
+1213:   dma_addr_t iv_dma = 0; 
+1214:   gfp_t flags = cryptoflags & CRYPTO_TFM_REQ_MAY_SLEEP ? GFP_KERNEL : 
+1215:             GFP_ATOMIC; 
+@@ -1287,18 +1226,16 @@ static struct talitos_edesc *talitos_edesc_alloc(struct    device *dev, 
+1226:       iv_dma = dma_map_single(dev, iv, ivsize, DMA_TO_DEVICE); 
+1227:  
+1228:   if (!dst || dst == src) { 
+    :-      src_nents = sg_count(src, assoclen + cryptlen + authsize, 
+    :-                   &src_chained); 
+1229:+      src_nents = sg_nents_for_len(src, 
+1230:+                       assoclen + cryptlen + authsize); 
+1231:       src_nents = (src_nents == 1) ? 0 : src_nents; 
+1232:       dst_nents = dst ? src_nents : 0; 
+1233:   } else { /* dst && dst != src*/ 
+    :-      src_nents = sg_count(src, assoclen + cryptlen + 
+    :-                    (encrypt ? 0 : authsize), 
+    :-                   &src_chained); 
+1234:+      src_nents = sg_nents_for_len(src, assoclen + cryptlen + 
+1235:+                       (encrypt ? 0 : authsize)); 
+1236:       src_nents = (src_nents == 1) ? 0 : src_nents; 
+    :-      dst_nents = sg_count(dst, assoclen + cryptlen + 
+    :-                    (encrypt ? authsize : 0), 
+    :-                   &dst_chained); 
+1237:+      dst_nents = sg_nents_for_len(dst, assoclen + cryptlen + 
+1238:+                       (encrypt ? authsize : 0)); 
+1239:       dst_nents = (dst_nents == 1) ? 0 : dst_nents; 
+1240:   } 
+1241:  
+@@ -1332,8 +1269,6 @@ static struct talitos_edesc *talitos_edesc_alloc(struct      device *dev, 
+1269:  
+1270:   edesc->src_nents = src_nents; 
+1271:   edesc->dst_nents = dst_nents; 
+    :-  edesc->src_chained = src_chained; 
+    :-  edesc->dst_chained = dst_chained; 
+1272:   edesc->iv_dma = iv_dma; 
+1273:   edesc->dma_len = dma_len; 
+1274:   if (dma_len)
+
+
+Removed Lines:
+
+Check drivers/crypto/talitos.c at line 1273 with
+
+$ sed -n '1273,1273p' drivers/crypto/talitos.c 
+	bool src_chained = false, dst_chained = false;
+
+
+Check drivers/crypto/talitos.c at lines 1290 to 1291 with
+
+$ sed -n '1290,1291p' drivers/crypto/talitos.c
+		src_nents = sg_count(src, assoclen + cryptlen + authsize,
+				     &src_chained);
+
+
+Check drivers/crypto/talitos.c at lines 1295 to 1297 with
+
+$ sed -n '1295,1297p' drivers/crypto/talitos.c
+		src_nents = sg_count(src, assoclen + cryptlen +
+					  (encrypt ? 0 : authsize),
+				     &src_chained);
+
+
+Check drivers/crypto/talitos.c at lines 1299 to 1301 with
+
+$ sed -n '1299,1301p' drivers/crypto/talitos.c
+		dst_nents = sg_count(dst, assoclen + cryptlen +
+					  (encrypt ? authsize : 0),
+				     &dst_chained)
+
+
+Check drivers/crypto/talitos.c at lines 1335 to 1336 with
+
+$ sed -n '1335,1336p' drivers/crypto/talitos.c
+	edesc->src_chained = src_chained;
+	edesc->dst_chained = dst_chained;
+
+
+## Verify patch
+
+
+@@ -1270,7 +1210,6 @@ static struct talitos_edesc *talitos_edesc_alloc(struct      device *dev,
+ {
+    struct talitos_edesc *edesc;
+    int src_nents, dst_nents, alloc_len, dma_len;
+-   bool src_chained = false, dst_chained = false;
+    dma_addr_t iv_dma = 0;
+    gfp_t flags = cryptoflags & CRYPTO_TFM_REQ_MAY_SLEEP ? GFP_KERNEL :
+              GFP_ATOMIC;
+@@ -1287,18 +1226,16 @@ static struct talitos_edesc *talitos_edesc_alloc(struct    device *dev,
+        iv_dma = dma_map_single(dev, iv, ivsize, DMA_TO_DEVICE);
+
+    if (!dst || dst == src) {
+-       src_nents = sg_count(src, assoclen + cryptlen + authsize,
+-                    &src_chained);
++       src_nents = sg_nents_for_len(src,
++                        assoclen + cryptlen + authsize);
+        src_nents = (src_nents == 1) ? 0 : src_nents;
+        dst_nents = dst ? src_nents : 0;
+    } else { /* dst && dst != src*/
+-       src_nents = sg_count(src, assoclen + cryptlen +
+-                     (encrypt ? 0 : authsize),
+-                    &src_chained);
++       src_nents = sg_nents_for_len(src, assoclen + cryptlen +
++                        (encrypt ? 0 : authsize));
+        src_nents = (src_nents == 1) ? 0 : src_nents;
+-       dst_nents = sg_count(dst, assoclen + cryptlen +
+-                     (encrypt ? authsize : 0),
+-                    &dst_chained);
++       dst_nents = sg_nents_for_len(dst, assoclen + cryptlen +
++                        (encrypt ? authsize : 0));
+        dst_nents = (dst_nents == 1) ? 0 : dst_nents;
+    }
+
+@@ -1332,8 +1269,6 @@ static struct talitos_edesc *talitos_edesc_alloc(struct      device *dev,
+
+    edesc->src_nents = src_nents;
+    edesc->dst_nents = dst_nents;
+-   edesc->src_chained = src_chained;
+-   edesc->dst_chained = dst_chained;
+    edesc->iv_dma = iv_dma;
+    edesc->dma_len = dma_len;
+    if (dma_len)
+
+
+## Result
+
+lines added   : ok
+lines removed : ok
+line numbers  : ok
+

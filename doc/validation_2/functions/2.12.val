@@ -1,0 +1,96 @@
+
+PIT Validation - fun: print_bin_fmt
+
+Author: Markus Kreidl
+Review: Reviewer (if applicable else ----)
+Date: 2018-04-05
+Expires: 000
+Keywords: setup, configuration, pit
+Status: initial draft
+Phase: validation
+Ref:
+QA: initial
+Tracking: ?
+Format: ascii text
+
+
+# Validate function
+
+print_bin_fmt     kernel/trace/trace.c
+
+## Result PIT
+
+Modified by 1 patch.
+
+-PATCH: 3403-tracing-Move-trace_flags-from-global-to-a-trace_arra.patch 
+
+{   'add_cnt_f': 0,
+    'add_cnt_t': 2,
+    'commit': '983f938ae69585213bbb779d841b90e75f93f545',
+    'cu': 'kernel/trace/trace.c',
+    'fun': 'print_bin_fmt',
+    'lines_add': [(2775, True), (2782, True)],
+    'lines_rm': [(2780, True)],
+    'rm_cnt_f': 0,
+    'rm_cnt_t': 1}
+
+
+## Create git diff with showlinenum
+
+$ git diff v4.3 kernel/trace/trace.c | ./showlinenum.awk > print_bin_fmt.diff
+
+Extract section for function print_bin_fmt
+
+@@ -2771,13 +2772,14 @@ static enum print_line_t print_hex_fmt(struct              trace_iterator *iter)
+2772: 
+2773: static enum print_line_t print_bin_fmt(struct trace_iterator *iter)
+2774: {
+2775:+  struct trace_array *tr = iter->tr;
+2776:   struct trace_seq *s = &iter->seq;
+2777:   struct trace_entry *entry;
+2778:   struct trace_event *event;
+2779: 
+2780:   entry = iter->ent;
+2781: 
+    :-  if (trace_flags & TRACE_ITER_CONTEXT_INFO) {
+2782:+  if (tr->trace_flags & TRACE_ITER_CONTEXT_INFO) {
+2783:       SEQ_PUT_FIELD(s, entry->pid);
+2784:       SEQ_PUT_FIELD(s, iter->cpu);
+2785:       SEQ_PUT_FIELD(s, iter->ts);
+
+
+
+Removed Lines:
+
+Check kernel/trace/trace.c at line 2780 with
+
+$ sed -n '2780,2780p' kernel/trace/trace.c
+    if (trace_flags & TRACE_ITER_CONTEXT_INFO) {
+
+
+## Verify patch
+
+@@ -2761,13 +2766,14 @@ static enum print_line_t print_hex_fmt(struct              trace_iterator *iter)
+
+ static enum print_line_t print_bin_fmt(struct trace_iterator *iter)
+ {
++   struct trace_array *tr = iter->tr;
+    struct trace_seq *s = &iter->seq;
+    struct trace_entry *entry;
+    struct trace_event *event;
+
+    entry = iter->ent;
+
+-   if (trace_flags & TRACE_ITER_CONTEXT_INFO) {
++   if (tr->trace_flags & TRACE_ITER_CONTEXT_INFO) {
+        SEQ_PUT_FIELD(s, entry->pid);
+        SEQ_PUT_FIELD(s, iter->cpu);
+        SEQ_PUT_FIELD(s, iter->ts);
+
+
+## Result
+
+lines added   : ok
+lines removed : ok
+line numbers  : ok
+

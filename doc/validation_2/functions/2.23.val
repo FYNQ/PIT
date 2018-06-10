@@ -1,0 +1,125 @@
+
+PIT Validation setup - fun: fsl_pci_mcheck_exception
+
+Author: Markus Kreidl
+Review: Reviewer (if applicable else ----)
+Date: 2018-05-30
+Expires: 000
+Keywords: validation fsl_pci_mcheck_exception
+Status: initial draft
+Phase: validation
+Ref:
+QA: initial
+Tracking: ?
+Format: ascii text
+
+
+# Validate function
+
+fsl_pci_mcheck_exception        arch/powerpc/sysdev/fsl_pci.c
+
+## Result PIT
+
+Modified by 2 patches.
+
+- PATCH 1: 7274-powerpc-fsl_pci-Check-for-get_user-probe_kernel_addr.patch
+
+{   'add_cnt_f': 0,
+    'add_cnt_t': 1,
+    'commit': '072daeed5525a0d8ad1e5ddfb38f29cef1ca25f2',
+    'cu': 'arch/powerpc/sysdev/fsl_pci.c',
+    'fun': 'fsl_pci_mcheck_exception',
+    'lines_add': [(1043, True)],
+    'lines_rm': [(1005, True)],
+    'rm_cnt_f': 0,
+    'rm_cnt_t': 1}
+
+
+- PATCH 2: 10762-uaccess-reimplement-probe_kernel_address-using-prob.patch
+
+{   'add_cnt_f': 0,
+    'add_cnt_t': 1,
+    'commit': '0ab32b6f1b88444524e52429fab334ff96683a3f',
+    'cu': 'arch/powerpc/sysdev/fsl_pci.c',
+    'fun': 'fsl_pci_mcheck_exception',
+    'lines_add': [(1040, True)],
+    'lines_rm': [(1002, True)],
+    'rm_cnt_f': 0,
+    'rm_cnt_t': 1}
+
+
+
+## Create git diff with showlinenum
+
+$ git diff v4.3   rch/powerpc/sysdev/fsl_pci.c | ./showlinenum.awk > fsl_pci_mcheck_exception.diff
+
+Extract section for function fsl_pci_mcheck_exception
+
+@@ -999,10 +1037,10 @@ int fsl_pci_mcheck_exception(struct pt_regs *regs)
+1037:           ret = get_user(regs->nip, &inst);
+1038:           pagefault_enable();
+1039:       } else {
+    :P2-          ret = probe_kernel_address(regs->nip, inst);
+1040:P2+          ret = probe_kernel_address((void *)regs->nip, inst);
+1041:       }
+1042: 
+    :P1-      if (mcheck_handle_load(regs, inst)) {
+1043:P1+      if (!ret && mcheck_handle_load(regs, inst)) {
+1044:           regs->nip += 4;
+1045:           return 1;
+1046:       }
+
+
+Removed Lines:
+
+PATCH 1:
+
+Check arch/powerpc/sysdev/fsl_pci.c at line 1005 with
+
+$ sed -n '1005,1005p' arch/powerpc/sysdev/fsl_pci.c
+		if (mcheck_handle_load(regs, inst)) {
+
+
+PATCH 2:
+
+Check arch/powerpc/sysdev/fsl_pci.c at line 1002 with
+
+$ sed -n '1002,1002p' arch/powerpc/sysdev/fsl_pci.c
+					ret = probe_kernel_address(regs->nip, inst);
+
+## Verify patch
+
+PATCH 1:
+
+@@ -1002,7 +1002,7 @@ int fsl_pci_mcheck_exception(struct pt_regs *regs)
+            ret = probe_kernel_address(regs->nip, inst);
+        }
+
+-       if (mcheck_handle_load(regs, inst)) {
++       if (!ret && mcheck_handle_load(regs, inst)) {
+            regs->nip += 4;
+            return 1;
+        }
+
+
+
+PATCH 2:
+
+@@ -999,7 +999,7 @@ int fsl_pci_mcheck_exception(struct pt_regs *regs)
+            ret = get_user(regs->nip, &inst);
+            pagefault_enable();
+        } else {
+-           ret = probe_kernel_address(regs->nip, inst);
++           ret = probe_kernel_address((void *)regs->nip, inst);
+        }
+
+        if (mcheck_handle_load(regs, inst)) {
+
+
+
+## Result
+
+lines added   : ok
+lines removed : ok
+line numbers  : ok
+

@@ -1,0 +1,128 @@
+
+PIT Validation - fun: packet_bind_spkt
+
+Author: Markus Kreidl
+Review: Reviewer (if applicable else ----)
+Date: 2018-04-05
+Expires: 000
+Keywords: setup, configuration, pit
+Status: initial draft
+Phase: validation
+Ref:
+QA: initial
+Tracking: ?
+Format: ascii text
+
+
+# Validation function
+
+packet_bind_spkt      net/packet/af_packet.c
+
+## Result PIT
+
+Modified by 1 patch.
+
+-PATCH:10702-packet-race-condition-in-packet_bind.patch
+
+{   'add_cnt_f': 0,
+    'add_cnt_t': 1,
+    'commit': '30f7ea1c2b5f5fb7462c5ae44fe2e40cb2d6a474',
+    'cu': 'net/packet/af_packet.c',
+    'fun': 'packet_bind_spkt',
+    'lines_add': [(3018, True)],
+    'lines_rm': [   (2967, True),
+                    (2968, True),
+                    (2978, True),
+                    (2979, True),
+                    (2980, True),
+                    (2981, True)],
+    'rm_cnt_f': 0,
+    'rm_cnt_t': 6}
+
+
+
+## Create git diff with showlinenum
+
+$ git diff v4.3 net/packet/af_packet.c | ./showlinenum.awk > packet_bind_spkt.diff
+
+
+Extract section for function packet_bind_spkt
+
+@@ -2964,8 +3006,6 @@ static int packet_bind_spkt(struct socket *sock, struct      sockaddr *uaddr,
+3006: {
+3007:   struct sock *sk = sock->sk;
+3008:   char name[15];
+    :-  struct net_device *dev;
+    :-  int err = -ENODEV;
+3009: 
+3010:   /*
+3011:    *  Check legality
+
+
+@@ -2975,19 +3015,13 @@ static int packet_bind_spkt(struct socket *sock, struct    sockaddr *uaddr,
+3015:       return -EINVAL;
+3016:   strlcpy(name, uaddr->sa_data, sizeof(name));
+3017: 
+    :-  dev = dev_get_by_name(sock_net(sk), name);
+    :-  if (dev)
+    :-      err = packet_do_bind(sk, dev, pkt_sk(sk)->num);
+    :-  return err;
+3018:+  return packet_do_bind(sk, name, 0, pkt_sk(sk)->num);
+3019: }
+3020: 
+
+Removed Lines:
+
+Check net/packet/af_packet.c in line 2967, 2968
+
+$ sed -n '2967,2968p' net/packet/af_packet.c
+	struct net_device *dev;
+	int err = -ENODEV;
+
+
+Check net/packet/af_packet.c in line 2978, 2979, 2980, 2981
+
+$ sed -n '2978,2981p' net/packet/af_packet.c
+	dev = dev_get_by_name(sock_net(sk), name);
+	if (dev)
+		err = packet_do_bind(sk, dev, pkt_sk(sk)->num);
+	return err;
+
+
+## Verify patch
+
+One patch: 10702-packet-race-condition-in-packet_bind.patch two hunks same fun.
+
+Hunk: 2972
+
+@@ -2972,8 +3006,6 @@ static int packet_bind_spkt(struct socket *sock, struct      sockaddr *uaddr,
+ {
+    struct sock *sk = sock->sk;
+    char name[15];
+-   struct net_device *dev;
+-   int err = -ENODEV;
+
+    /*
+     *  Check legality
+
+
+Hunk: 2983
+
+@@ -2983,19 +3015,13 @@ static int packet_bind_spkt(struct socket *sock, struct    sockaddr *uaddr,
+        return -EINVAL;
+    strlcpy(name, uaddr->sa_data, sizeof(name));
+
+-   dev = dev_get_by_name(sock_net(sk), name);
+-   if (dev)
+-       err = packet_do_bind(sk, dev, pkt_sk(sk)->num);
+-   return err;
++   return packet_do_bind(sk, name, 0, pkt_sk(sk)->num);
+ }
+
+
+## Result
+
+lines added   : ok
+lines removed : ok
+line numbers  : ok
+

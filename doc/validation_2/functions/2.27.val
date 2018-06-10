@@ -1,0 +1,114 @@
+
+PIT Validation setup - fun: ext4_writepage
+
+Author: Markus Kreidl
+Review: Reviewer (if applicable else ----)
+Date: 2018-05-30
+Expires: 000
+Keywords: validation ext4_writepage
+Status: initial draft
+Phase: validation
+Ref:
+QA: initial
+Tracking: ?
+Format: ascii text
+
+
+# Validate function
+
+ext4_writepage           fs/ext4/inode.c
+
+## Result PIT
+
+Modified by 1 patch.
+
+- PATCH: 4055-ext4-optimize-ext4_writepage-for-attempted-4k-delall.patch
+
+{   'add_cnt_f': 0,
+    'add_cnt_t': 2,
+    'commit': 'cccd147a57e47527ce9c27fcd5f0a1c5669d6870',
+    'cu': 'fs/ext4/inode.c',
+    'fun': 'ext4_writepage',
+    'lines_add': [(1864, True), (1865, True)],
+    'lines_rm': [(1822, True)],
+    'rm_cnt_f': 0,
+    'rm_cnt_t': 1}
+
+
+
+## Create git diff with showlinenum
+
+$ git diff v4.3  fs/ext4/inode.c  | ./showlinenum.awk > ext4_writepage.diff
+
+Extract section for function ext4_writepage
+
+@@ -1815,11 +1847,22 @@ static int ext4_writepage(struct page *page,
+1847:    * the page. But we may reach here when we do a journal commit via
+1848:    * journal_submit_inode_data_buffers() and in that case we must write
+1849:    * allocated buffers to achieve data=ordered mode guarantees.
+1850:+   *
+1851:+   * Also, if there is only one buffer per page (the fs block
+1852:+   * size == the page size), if one buffer needs block
+1853:+   * allocation or needs to modify the extent tree to clear the
+1854:+   * unwritten flag, we know that the page can't be written at
+1855:+   * all, so we might as well refuse the write immediately.
+1856:+   * Unfortunately if the block size != page size, we can't as
+1857:+   * easily detect this case using ext4_walk_page_buffers(), but
+1858:+   * for the extremely common case, this is an optimization that
+1859:+   * skips a useless round trip through ext4_bio_write_page().
+1860:    */
+1861:   if (ext4_walk_page_buffers(NULL, page_bufs, 0, len, NULL,
+1862:                  ext4_bh_delay_or_unwritten)) {
+1863:       redirty_page_for_writepage(wbc, page);
+    :-      if (current->flags & PF_MEMALLOC) {
+1864:P+      if ((current->flags & PF_MEMALLOC) ||
+1865:P+          (inode->i_sb->s_blocksize == PAGE_CACHE_SIZE)) {
+1866:           /*
+1867:            * For memory cleaning there's no point in writing only
+1868:            * some buffers. So just bail out. Warn if we came here
+@@ -2599,8 +2642,7 @@ static int ext4_nonda_switch(struct super_block *sb)
+2642: /* We always reserve for an inode update; the superblock could be there      too */
+
+
+Removed Lines:
+
+Check fs/ext4/inode.c at line 1822 with
+
+$ sed -n '1822,1822p' fs/ext4/inode.c
+		if (current->flags & PF_MEMALLOC) {
+
+
+## Verify patch
+
+@@ -1815,11 +1815,22 @@ static int ext4_writepage(struct page *page,
+     * the page. But we may reach here when we do a journal commit via
+     * journal_submit_inode_data_buffers() and in that case we must write
+     * allocated buffers to achieve data=ordered mode guarantees.
++    *
++    * Also, if there is only one buffer per page (the fs block
++    * size == the page size), if one buffer needs block
++    * allocation or needs to modify the extent tree to clear the
++    * unwritten flag, we know that the page can't be written at
++    * all, so we might as well refuse the write immediately.
++    * Unfortunately if the block size != page size, we can't as
++    * easily detect this case using ext4_walk_page_buffers(), but
++    * for the extremely common case, this is an optimization that
++    * skips a useless round trip through ext4_bio_write_page().
+     */
+    if (ext4_walk_page_buffers(NULL, page_bufs, 0, len, NULL,
+                   ext4_bh_delay_or_unwritten)) {
+        redirty_page_for_writepage(wbc, page);
+-       if (current->flags & PF_MEMALLOC) {
++       if ((current->flags & PF_MEMALLOC) ||
++           (inode->i_sb->s_blocksize == PAGE_CACHE_SIZE)) {
+            /*
+             * For memory cleaning there's no point in writing only
+             * some buffers. So just bail out. Warn if we came here
+
+
+## Result
+
+lines added   : ok
+lines removed : ok
+line numbers  : ok
+
