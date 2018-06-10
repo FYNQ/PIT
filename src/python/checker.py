@@ -166,8 +166,12 @@ class worker:
         fname_f = self.path_cur + 'functions_data.json'
         fname_s = self.path_cur + 'summary_data.json'
         tag_date = aux.get_commit_time_sec(self.tag_cur, conf.LINUX_SRC)
-        summary = {'tag': self.tag_cur, 'date': tag_date,
-                   'lines_add': self.l_insn_add, 'lines_rm': self.l_insn_rm,
+        summary = {'tag': self.tag_cur,
+                   'date': tag_date,
+                   'patches': len(self.commits_insn_applied),
+                   'patches_tot':len(os.listdir(self.diff_path)),
+                   'lines_add': self.l_insn_add,
+                   'lines_rm': self.l_insn_rm,
                    'funs_tot': self.funs_tot,
                    'funs_rm': self.cnt_fun_rm,
                    'funs_add': self.cnt_fun_add,
@@ -557,7 +561,7 @@ class worker:
 path_cur = '/home/markus/work_ot/PIT/build/v4.3/ppc_men_defconfig/'
 path_nex = '/home/markus/work_ot/PIT/build/v4.4-rc1/ppc_men_defconfig/'
 
-a = worker(path_cur, path_nex, 'v4.3', 'v4.4-rc1', 'ppc')
+#a = worker(path_cur, path_nex, 'v4.3', 'v4.4-rc1', 'ppc')
 
 #format_patches = aux.get_patches_fp(ppath + 'diffs/')
 
