@@ -63,8 +63,8 @@ def do_cmd(cmd, path, logger):
     process = subprocess.Popen(cmd, cwd=path, shell=True,
                                stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 
-    process.wait()
     out, err = process.communicate()
+    process.wait()
     res = out.decode("utf-8")
     if logger != None:
         if path != None:
@@ -110,8 +110,8 @@ def get_commit_time_sec(tag, path):
     process = subprocess.Popen(cmd, cwd=path, shell=True,
                                 stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 
-    process.wait()
     out, err = process.communicate()
+    process.wait()
     t = int(out.decode('utf-8').rstrip('\n'))
     return t/3600
 
@@ -125,29 +125,14 @@ def git_make_fun_diff(linux_path, opath, f_tag, t_tag, line_start, line_end, \
         os.makedirs(opath)
 
     if not os.path.isfile(ofile):
+        cmd = ("git log %s..%s -L%d,%d:%s > %s/%s.diff" %
+                (f_tag, t_tag, line_start, line_end, cu, opath, fun))
 
-        cmd = ("git log %s..%s -L%d,%d:%s" %
-            (f_tag, t_tag, line_start, line_end, cu))
-        #print(cmd)
-        #r = do_cmd(cmd, linux_path, logger)
         process = subprocess.Popen(cmd, cwd=linux_path, shell=True,
-                               stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-
-        process.wait()
+                           stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         out, err = process.communicate()
-
-        if out.decode('utf-8')  == "":
-            print("function: %s removed" % fun)
-            return True
-        else:
-            cmd = ("git log %s..%s -L%d,%d:%s > %s/%s.diff" %
-                    (f_tag, t_tag, line_start, line_end, cu, opath, fun))
-            print(cmd)
-            process = subprocess.Popen(cmd, cwd=linux_path, shell=True,
-                               stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-            process.wait()
-            out, err = process.communicate()
-            return False
+        process.wait()
+        return True
 
 
 
@@ -160,7 +145,6 @@ def mk_git_diff_funs(linux_repo, path, tag, next_tag, funs, logger):
         start = funs[fun]['start']
         end = funs[fun]['end']
         cu = funs[fun]['cu']
-        #print('create git diff for function: %s' % fun)
         git_make_fun_diff(linux_repo, out_path, tag, next_tag,
                                     start, end, cu, fun, logger)
 
