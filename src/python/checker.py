@@ -62,6 +62,9 @@ class worker:
         print("** %s %s " % (path_cur,path_nex))
         if not os.path.exists(path_cur + '/fun_diffs'):
             os.makedirs(path_cur + '/fun_diffs')
+        if not os.path.exists(path_cur + '/funs_nin_cur'):
+            os.makedirs(path_cur + '/funs_nin_cur')
+
         if not os.path.exists(path_cur + '/struct_diffs'):
             os.makedirs(path_cur + '/struct_diffs')
         if not os.path.exists(path_cur + '/debug_data'):
@@ -130,13 +133,9 @@ class worker:
                                                        self.fun_src_nex,
                                                        self.fun_decl_cur,
                                                        self.fun_decl_nex)
-        self.logger.info("Create diffs for functions")
-        self.funs_nin_cur = self.create_diffs(conf.LINUX_SRC, funs,
-                                            'fun_diffs', tag_cur, tag_nex)
 
-
-        self.funs_tot = len(funs)
-        self.logger.info("functions total %d "  % len(funs))
+        self.funs_tot = self.cnt_funs(funs)
+        self.logger.info("functions total %d "  % self.cnt_funs(funs))
 
         self.logger.info("function not in current %d\n" %
                         (self.cnt_funs(n_in_cur)))
@@ -149,6 +148,9 @@ class worker:
         self.not_in_nex = n_in_nex
         diff_jobs = []
 
+        self.logger.info("Create diffs for functions")
+        self.funs_nin_cur = self.create_diffs(conf.LINUX_SRC, funs,
+                                            'fun_diffs', tag_cur, tag_nex)
 
         self.logger.info("Create diffs functions not in current")
         self.funs_nin_cur = self.create_diffs(conf.LINUX_SRC, n_in_cur,
@@ -222,7 +224,7 @@ class worker:
         self.logger.info("Get stats for added functions ...\n")
         ren, added, not_res = self.check_not_in_cur()
         r_ren, d_o, l_a_t, l_r_t, l_a_f, l_r_f, shas_fun = self.get_mod_of_ren(ren)
-        self.data_out_funs.append(d_o)
+        self.data_out_funs.extend(d_o)
         self.l_insn_add_t += l_a_t
         self.l_insn_add_f += l_a_f
         self.l_insn_rm_t += l_r_t
@@ -233,14 +235,14 @@ class worker:
         funs_removed = self.get_rm_funs(funs_renamed)
 
         self.l_fun_add, d_o, commits = self.get_lines_mod(added)
-        self.data_out_funs.append(d_o)
+        self.data_out_funs.extend(d_o)
         for commit in commits:
             if commit not in commits_insn_applied:
                 self.commits_insn_applied.append(commit)
 
         removed, d_o, commits, self.l_fun_rm = self.check_removed(funs_removed,
                                                          self.cu_patches)
-        self.data_out_funs.append(d_o)
+        self.data_out_funs.extend(d_o)
         for commit in commits:
             if commit not in commits_insn_applied:
                 self.commits_insn_applied.append(commit)
@@ -313,6 +315,12 @@ class worker:
     def get_mod_of_ren(self, data):
         result = {}
         data_out = []
+        l_add_t = 0
+        l_rm_t = 0
+        l_add_f = 0
+        l_rm_f = 0
+        shas = []
+
         for cu in data.keys():
             if not cu in result.keys():
                 result.update({cu:{}})
@@ -476,7 +484,8 @@ class worker:
                     decl_nex = self.fun_decl_nex[cu][fun]['src']
                     body_start = self.fun_def_len_nex[cu+'.fl'][fun]['start']
                     body_end = self.fun_def_len_nex[cu+'.fl'][fun]['end']
-
+                    if isinstance(patch, bool):
+                        continue
                     commit = aux.get_hash(patch.items[0].header)
                     for item in patch.items:
                         for hunk in item.hunks:
