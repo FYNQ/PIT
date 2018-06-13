@@ -59,7 +59,6 @@ def analyse_fun_diffs(fun_patches, cu_patches):
 class worker:
     def __init__(self, path_cur, path_nex, tag_cur, tag_nex, arch):
         self.commits_insn_applied = []
-        print("** %s %s " % (path_cur,path_nex))
         if not os.path.exists(path_cur + '/fun_diffs'):
             os.makedirs(path_cur + '/fun_diffs')
         if not os.path.exists(path_cur + '/funs_nin_cur'):
@@ -171,8 +170,6 @@ class worker:
         # calculate and print out stats
         self.l_insn_add = self.l_insn_add_t + self.l_insn_add_f + self.l_fun_add
         self.l_insn_rm = self.l_insn_rm_t + self.l_insn_rm_f + self.l_fun_rm
-        fname_f = self.path_cur + 'functions_data.json'
-        fname_s = self.path_cur + 'summary_data.json'
         tag_date = aux.get_commit_time_sec(self.tag_cur, conf.LINUX_SRC)
         summary = {'tag': self.tag_cur,
                    'date': tag_date,
@@ -184,11 +181,17 @@ class worker:
                    'funs_rm': self.cnt_fun_rm,
                    'funs_add': self.cnt_fun_add,
                    'funs_ren': self.cnt_fun_ren}
+        fname_f = self.path_cur + 'functions_data.json'
+        fname_s = self.path_cur + 'summary_data.json'
+        fname_sha = self.path_cur + 'sha_lst.json'
 
         with open(fname_f, 'w') as outfile:
             json.dump(self.data_out_funs, outfile)
         with open(fname_s, 'w') as outfile:
             json.dump(summary, outfile)
+        with open(fname_sha, 'w') as outfile:
+            json.dump(self.commits_insn_applied, outfile)
+
 
 
 

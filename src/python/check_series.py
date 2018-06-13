@@ -215,41 +215,38 @@ def do_mp(first, last, kconfig, arch):
     pool.close()
     pool.join()
 
-    sum_data = []
-    sum_sha_insn = []
-    sum_sha_struct = []
+    sum_summary = []
+    sum_sha = []
+    sum_fun = []
 
     for tag in do_tags[:-2]:
         if tag != None:
             rep_path = '%sbuild/%s/%s/' % (conf.BASE, tag, kconfig)
-            #data, sha_insn, sha_struct = cr.write_report(tag, kconfig, rep_path)
-            #sum_data.append((tag, data))
-            #sum_sha_insn.append((tag, sha_insn))
-            #sum_sha_struct.append((tag, sha_struct))
-
-
-#    for i in range(0, len(do_tags)-1):
-#        if do_tags[i+1] != None:
-#            rep_path = '%sbuild/%s/%s/' % (conf.BASE, do_tags, kconfig)
-#            data, sha_insn, sha_struct = cr.write_report(do_tags, kconfig, rep_path)
-#            sum_data.append((do_tags, data))
-#            sum_sha_insn.append((do_tags, sha_insn))
-#            sum_sha_struct.append((do_tags, sha_struct))
+            with open(rep_path + 'summary_data.json') as f:
+                    data_sum = json.load(f)
+            with open(rep_path + 'sha_lst.json') as f:
+                    data_sha = json.load(f)
+            with open(rep_path + 'functions_data.json') as f:
+                    data_fun = json.load(f)
+            ver_date = data_sum['date']
+            sum_summary.append((tag, ver_date, data_sum))
+            sum_sha.append((tag, ver_date, data_sha))
+            sum_fun.append((tag, ver_date, data_fun))
 
     base = "%sbuild/report/res_series_" % conf.BASE
 
 
-    fname = base + "%s_%s_%s_%s" % (first, last, arch, kconfig)
+    fname = base + "result_summary_%s_%s_%s_%s" % (first, last, arch, kconfig)
     with open(fname, 'w') as outfile:
-        json.dump(sum_data, outfile)
+        json.dump(sum_summary, outfile)
 
-    fname = base + "sha_insn_%s_%s_%s_%s" % (first, last, arch, kconfig)
+    fname = base + "result_sha_%s_%s_%s_%s" % (first, last, arch, kconfig)
     with open(fname, 'w') as outfile:
-        json.dump(sum_sha_insn, outfile)
+        json.dump(sum_sha, outfile)
 
-    fname = base + "sha_struct_%s_%s_%s_%s" % (first, last, arch, kconfig)
+    fname = base + "result_fun_%s_%s_%s_%s" % (first, last, arch, kconfig)
     with open(fname, 'w') as outfile:
-        json.dump(sum_sha_struct, outfile)
+        json.dump(sum_fun, outfile)
 
 
 do_mp(parse.first, parse.last, parse.kconfig, parse.arch)
