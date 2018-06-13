@@ -1,0 +1,46 @@
+# Connect to docker - Run in bash:
+
+## Via ssh
+
+```
+$ ssh user@localhost -p PORT
+```
+
+PORT        ARCH
+--------------------
+1230        powerpc32, and powerpc64
+1231        arm
+1232        arm64
+1233        x86, x86_64
+
+
+## Via docker exec
+
+```
+$ docker ps
+
+CONTAINER ID        IMAGE               COMMAND                                    CREATED             STATUS
+             PORTS                 NAMES
+606c509a3ed3        pitdocker_pit       "/bin/sh -c 'tail ..."   43 hours          ago        Up 37 h
+ours                               pitdocker_pit_1
+```
+
+# Connect docker
+
+The last column gives you the NAME
+
+```
+# docker exec -it pitdocker_pit_1 /bin/bash
+```
+
+To connect, in general the NAME or the CONTAINER ID can be used
+
+
+# Run job
+
+$ cd /home/user/gcc_pit_plugin/frontend
+
+
+$ python3 check_series.py -k i7_x86_minimal_defconfig  -f v3.6  -l v3.7-rc1
+
+

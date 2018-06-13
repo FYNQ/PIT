@@ -1,0 +1,65 @@
+# Docker Compose file for pit tool
+
+
+# Replace: /home/markus/pit_data/build with your local path
+
+# Build with:
+# docker-compose build pit
+
+# Run with:
+# docker-compose up
+
+version: '2'
+services:
+  pit_powerpc:
+    build:
+      context: .
+      args:
+        - ARCH=powerpc
+        - CC=/usr/bin/powerpc64-linux-gnu-gcc-6
+    volumes:
+      - pit_data:/home/user/build
+      - ${LINUX_SRC}:/home/user/linux-stable
+
+    ports:
+      - "1230:22"
+
+  pit_arm:
+    build:
+      context: .
+      args:
+        - ARCH=arm
+        - CC=/usr/bin/arm-linux-gnueabihf-gcc
+    volumes:
+      - pit_data:/home/user/build
+      - ${LINUX_SRC}:/home/user/linux-stable
+
+    ports:
+      - "1231:22"
+
+  pit_arm64:
+    build:
+      context: .
+      args:
+        - ARCH=arm64
+        - CC=/usr/bin/aarch64-linux-gnu-gcc
+    volumes:
+      - pit_data:/home/user/build
+      - ${LINUX_SRC}:/home/user/linux-stable
+    ports:
+      - "1232:22"
+
+  pit_x86:
+    build:
+      context: .
+      args:
+        - ARCH=x86
+        - CC=/usr/bin/gcc
+    volumes:
+      - pit_data:/home/user/build
+      - ${LINUX_SRC}:/home/user/linux-stable
+    ports:
+      - "1233:22"
+volumes:
+  pit_data:
+
