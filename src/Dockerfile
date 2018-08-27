@@ -43,9 +43,9 @@ set -x && apt-get install --assume-yes gcc-aarch64-linux-gnu \
     gcc-6-plugin-dev-aarch64-linux-gnu lzop; fi
 RUN set -x && apt-get install --assume-yes software-properties-common bc\
     libjson-c-dev moreutils vim screen python3-pip passwd locales \
-    bash git openssh-server libiberty-dev sudo gcc g++
+    bash git openssh-server libiberty-dev sudo gcc g++ libelf-dev patch
 RUN set -x && apt-get clean
-RUN pip3 install dpath python-dateutil
+RUN pip3 install dpath python-dateutil patch
 ENV TZ=Europe/Vienna
 RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
 RUN if [ ${_ARCH} = "powerpc" ] ; then \
@@ -63,11 +63,11 @@ ADD docker/id_dsa  /home/user/.ssh
 ADD docker/id_dsa.pub /home/user/.ssh
 
 ADD . /home/user/src
-RUN chown -R user:user /home/user
+#RUN chown -R user:user /home/user
 
 USER user
 ENV HOME /home/user
-ENTRYPOINT sudo service ssh restart && bash && tail -n 100 -f /home/user/info.txt
+ENTRYPOINT sudo service ssh restart && chown -R user:user /home/user && bash && tail -n 100 -f /home/user/info.txt
 RUN cd /home/user/src/gcc_plugin && make clean
 RUN cd /home/user/src/gcc_plugin && \ 
     export CC=${_CC} && export ARCH=${_ARCH} && make
