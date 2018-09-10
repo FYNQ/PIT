@@ -76,6 +76,10 @@ def do_cmd(cmd, path, logger):
         print("do cmd: %s in path: %s" % (cmd, path))
 
 
+    if process.returncode != 0:
+        print("Subprocess failed!")
+        print("%s" % cmd)
+        exit()
     return res
 
 
