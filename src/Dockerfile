@@ -21,6 +21,7 @@ FROM debian:stretch
 
 #RUN  echo 'Acquire::http { Proxy "http://192.168.2.42:3142"; };' >> /etc/apt/     apt.conf.d/01proxy
 
+
 ARG ARCH
 ARG CC
 ENV _ARCH=${ARCH}
@@ -61,14 +62,14 @@ ADD docker/info.txt /home/user/info.txt
 ADD docker/sudoers /etc/sudoers
 ADD docker/id_dsa  /home/user/.ssh
 ADD docker/id_dsa.pub /home/user/.ssh
-RUN git clone ../linux-stable
 
 ADD . /home/user/src
 RUN chown -R user:user /home/user
 
 USER user
 ENV HOME /home/user
-ENTRYPOINT sudo service ssh restart && bash && tail -n 100 -f /home/user/info.txt
 RUN cd /home/user/src/gcc_plugin && make clean
 RUN cd /home/user/src/gcc_plugin && \ 
     export CC=${_CC} && export ARCH=${_ARCH} && make
+#ENTRYPOINT sudo service ssh restart && bash && tail -n 100 -f /home/user/info.txt
+ENTRYPOINT /home/user/src/entrypoint.sh
