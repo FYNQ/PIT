@@ -6,7 +6,7 @@ CWD = os.getcwd()
 BASE = os.path.realpath(CWD + "/../../") + '/'
 CPLUGIN = BASE + "src/gcc_plugin/pit_plugin.so"
 CPLUGIN_DIR = BASE + "/src/gcc_plugin/"
-LINUX_SRC = "/home/markus/work_ot/linux-stable/"
+LINUX_SRC = "/home/user/src/linux-stable/"
 BUILD_DIR = BASE + "build/"
 
 
