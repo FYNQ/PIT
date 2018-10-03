@@ -25,7 +25,8 @@ def get_src(src_path, len_def, suffix_len):
     data = {}
     for cu in len_def.keys():
         fname = src_path + cu[:-suffix_len]
-
+        if "<stdin>" in fname:
+            continue
         f = codecs.open(fname, "r", encoding='utf-8', errors='replace')
 
         lines = f.readlines()
