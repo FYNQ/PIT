@@ -312,7 +312,7 @@ def create_patch_series(from_tag, to_tag, path, opath, logger):
 
 
 
-def do_fix(fpath, _line):
+def do_fix(fpath, line):
     """ Fix files with non utf8 character found by cmd line tool isutf
 
     :param fpath: base path
@@ -320,8 +320,7 @@ def do_fix(fpath, _line):
 
     :returns: Data or None if file not exists or json cannot be read
     """
-    line = _line.decode('utf-8').split(' ')
-    fname = line[0]
+    fname = line.split(' ')[0]
     if len(fname) > 0:
         print("fix utf-8: %s" % (fpath + fname[1:-1]))
         fin = codecs.open(fpath + fname[1:-1], 'r',
@@ -349,8 +348,9 @@ def fix_utf(ftype, fpath):
                                stderr=subprocess.PIPE)
 
     # wait for the process to terminate
+    out, err = process.communicate()
     process.wait()
-    for line in process.stdout:
+    for line in out.decode('utf-8').split('\n'):
         do_fix(fpath, line)
     errcode = process.returncode
 
@@ -366,6 +366,7 @@ def is_patched(path, patch_name):
     cmd = "patch -N --dry-run --silent -p1<%s" % patch_name
     print(cmd)
     pr = subprocess.Popen(cmd, cwd=path, shell=True, stdout=subprocess.PIPE)
+    out, err = process.communicate()
     pr.wait()
     return (pr.returncode)
 
