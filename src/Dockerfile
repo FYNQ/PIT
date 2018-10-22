@@ -44,7 +44,7 @@ set -x && apt-get install --assume-yes gcc-aarch64-linux-gnu \
     gcc-6-plugin-dev-aarch64-linux-gnu lzop; fi
 RUN set -x && apt-get install --assume-yes software-properties-common bc\
     libjson-c-dev moreutils vim screen python3-pip passwd locales \
-    bash git openssh-server libiberty-dev sudo gcc g++ libelf-dev patch
+    bash git openssh-server libiberty-dev sudo gcc g++ libelf-dev patch bison flex
 RUN set -x && apt-get clean
 RUN pip3 install dpath python-dateutil patch
 ENV TZ=Europe/Vienna
