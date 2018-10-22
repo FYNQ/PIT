@@ -79,6 +79,7 @@ def do_cmd(cmd, path, logger):
     if process.returncode != 0:
         print("Subprocess failed!")
         print("%s" % cmd)
+        print("%s" % res)
         exit()
     return res
 
@@ -320,7 +321,7 @@ def do_fix(fpath, line):
 
     :returns: Data or None if file not exists or json cannot be read
     """
-    fname = line.split(' ')[0]
+    fname = line[0]
     if len(fname) > 0:
         print("fix utf-8: %s" % (fpath + fname[1:-1]))
         fin = codecs.open(fpath + fname[1:-1], 'r',
@@ -351,7 +352,7 @@ def fix_utf(ftype, fpath):
     out, err = process.communicate()
     process.wait()
     for line in out.decode('utf-8').split('\n'):
-        do_fix(fpath, line)
+        do_fix(fpath, line.split(' '))
     errcode = process.returncode
 
 
@@ -364,7 +365,6 @@ def is_patched(path, patch_name):
     :returns: 1 not patched, 0 patched
     """
     cmd = "patch -N --dry-run --silent -p1<%s" % patch_name
-    print(cmd)
     pr = subprocess.Popen(cmd, cwd=path, shell=True, stdout=subprocess.PIPE)
     out, err = process.communicate()
     pr.wait()
