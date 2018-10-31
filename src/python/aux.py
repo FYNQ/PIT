@@ -85,6 +85,8 @@ def do_cmd(cmd, path, logger):
 
 
 def find_in_file(fname, commit):
+    if os.stat(fname).st_size == 0:
+        False
     with open(fname, 'rb', 0) as file, \
         mmap.mmap(file.fileno(), 0, access=mmap.ACCESS_READ) as s:
         search_term = str.encode(commit)
@@ -365,10 +367,10 @@ def is_patched(path, patch_name):
     :returns: 1 not patched, 0 patched
     """
     cmd = "patch -N --dry-run --silent -p1<%s" % patch_name
-    pr = subprocess.Popen(cmd, cwd=path, shell=True, stdout=subprocess.PIPE)
+    process = subprocess.Popen(cmd, cwd=path, shell=True, stdout=subprocess.PIPE)
     out, err = process.communicate()
-    pr.wait()
-    return (pr.returncode)
+    process.wait()
+    return (process.returncode)
 
 
 def patch_req(path, req_path, reqs, logger):
