@@ -775,8 +775,9 @@ void dump_node(FILE *file, json_object *obj, int item, tree node,
 		    break;
 
 		case VECTOR_CST: {
-			unsigned i;
-			for (i = 0; i < VECTOR_CST_NELTS(node); ++i) {
+            unsigned int count = vector_cst_encoded_nelts (node);
+			for (i = 0; i < count; ++i) {
+
 				dump_node(file, obj, item, VECTOR_CST_ELT(node, i), indent + 4);
 			}
 		} break;

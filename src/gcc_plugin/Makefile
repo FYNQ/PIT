@@ -6,6 +6,8 @@ SOURCES=\
 
 INSTALLDIR=/usr
 
+
+CC=/usr/bin/gcc
 CXX=/usr/bin/g++
 
 PLUGINDIR=$(shell $(CC) -print-file-name=plugin)
