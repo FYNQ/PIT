@@ -4,31 +4,13 @@ import time
 import json
 import argparse
 import logging
-import multiprocessing.pool
-#import create_report as cr
+from multiprocessing import Pool
 import conf
 import aux
 import build_utils
 import checker
 
 global logger
-
-
-class NoDaemonProcess(multiprocessing.Process):
-    # make 'daemon' attribute always return False
-    def _get_daemon(self):
-        return False
-
-    def _set_daemon(self, value):
-        pass
-
-    daemon = property(_get_daemon, _set_daemon)
-
-
-# We sub-class multiprocessing.pool.Pool instead of multiprocessing.Pool
-# because the latter is only a wrapper function, not a proper class.
-class MyPool(multiprocessing.pool.Pool):
-        Process = NoDaemonProcess
 
 
 parser = argparse.ArgumentParser(description='LK Patch Impact Tester')
@@ -129,8 +111,11 @@ def get_todo_tags(first, last, tags):
             n = first.split('.')
             base = '.'.join(n[0:2])
         else:
-            n = last.split('.')
-            base = '.'.join(n[0:2])
+            if 'rc' in last:
+                base = last.split('-')[0]
+            else:
+                n = last.split('.')
+                base = '.'.join(n[0:2])
 
     else:
         base = first.split('-')[0]
@@ -149,7 +134,7 @@ def get_todo_tags(first, last, tags):
                 break
 
 
-    if first_is_base == False and sam_base:
+    if first_is_base == False and same_base:
         idx = tags[base].index(first)
         for tag in tags[base][idx:]:
             todo_tags.append(tag)
@@ -216,36 +201,10 @@ def do_mp(first, last, kconfig, arch):
 #    tags = read_tags("tags.txt")
     tags = get_tags(conf.LINUX_SRC)
     tags_a = prep_tags(tags)
-    tags = get_todo_tags(first, last, tags_a)
+    do_tags = get_todo_tags(first, last, tags_a)
     req = read_reqs('req_compiler.txt')
     append = False
     cnt = 0
-    # case: v4.3 .. v4.4.1
-    if first.split(".")[1] != last.split(".")[1] and ("-") not in first:
-        for tag in tags:
-            if tag == first:
-                cnt += 1
-            if cnt == 2:
-                do_tags.append(tag)
-            if tag == last:
-                index = tags.index(tag)
-                if index + 1 < len(do_tags):
-                    do_tags.append(tags[index+1])
-                break
-    else:
-        for tag in tags:
-            if tag == first:
-                append = True
-            if append == True:
-                do_tags.append(tag)
-            if tag == last:
-                append = False
-                break
-
-    # No tag found!
-    if append == True:
-        print("Please check if tags are valid!")
-        return
 
     logger.info("Do tags: %s" % do_tags)
     do_tags.append(None)
@@ -273,11 +232,9 @@ def do_mp(first, last, kconfig, arch):
                 aux.create_patch_series(do_tags[i], do_tags[i+1],
                                        conf.LINUX_SRC, path_diffs, logger)
 
-
-
         # check if kernel has been compiled already
         if not os.path.isfile(path_proj + "/kernel_compile"):
-            jobs_kernel.append((path_proj, path_linux, kconfig, arch, tag))
+            jobs_kernel.append((path_proj, path_linux, kconfig, arch, do_tags[i]))
         else:
             continue
 
@@ -290,7 +247,7 @@ def do_mp(first, last, kconfig, arch):
                             conf.BASE + '/src/patches/',
                             req[do_tags[i]], logger)
 
-    pool = multiprocessing.Pool(conf.CPUs)
+    pool = Pool(conf.CPUs)
     res = pool.starmap(compile_kernel, jobs_kernel)
     pool.close()
     pool.join()
@@ -303,7 +260,7 @@ def do_mp(first, last, kconfig, arch):
             path_next = "%sbuild/%s/%s/" % (conf.BASE, do_tags[i+1], kconfig)
             fe_jobs.append((do_tags[i], do_tags[i+1], arch, path_cur, path_next))
 
-    pool = MyPool(conf.CPUs)
+    pool = Pool(processes=conf.CPUs)
     res = pool.starmap(data_job, fe_jobs)
     pool.close()
     pool.join()
@@ -327,7 +284,6 @@ def do_mp(first, last, kconfig, arch):
             sum_fun.append((tag, ver_date, data_fun))
 
     base = "%sbuild/report/res_series_" % conf.BASE
-
 
     fname = base + "result_summary_%s_%s_%s_%s" % (first, last, arch, kconfig)
     with open(fname, 'w') as outfile:
