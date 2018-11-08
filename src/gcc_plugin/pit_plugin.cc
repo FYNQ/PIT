@@ -775,9 +775,12 @@ void dump_node(FILE *file, json_object *obj, int item, tree node,
 		    break;
 
 		case VECTOR_CST: {
-            unsigned int count = vector_cst_encoded_nelts (node);
+#if BUILDING_GCC_VERSION >= 8000
+            int count = vector_cst_encoded_nelts (node);
 			for (i = 0; i < count; ++i) {
-
+#else
+            for (i = 0; i < VECTOR_CST_NELTS(node); ++i) {
+#endif
 				dump_node(file, obj, item, VECTOR_CST_ELT(node, i), indent + 4);
 			}
 		} break;
