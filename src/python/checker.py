@@ -82,6 +82,7 @@ class worker:
         self.cnt_fun_rm = 0
         self.cnt_fun_add = 0
         self.cnt_fun_ren = 0
+        self.result_fun = {}
 
         logger_name = "checker_%s" % tag_cur
         aux.setup_logger(logger_name, path_cur + "/check_series.log")
@@ -192,6 +193,14 @@ class worker:
         with open(fname_sha, 'w') as outfile:
             json.dump(self.commits_insn_applied, outfile)
 
+        with open(self.path_cur + 'result_fun.json', 'w') as outfile:
+            json.dump(self.result_fun , outfile)
+
+        with open(self.path_cur + 'fun_decls_cur.json', 'w') as outfile:
+            json.dump(self.fun_decl_cur , outfile)
+
+        with open(self.path_cur + 'fun_decls_nex.json', 'w') as outfile:
+            json.dump(self.fun_decl_nex , outfile)
 
 
 
@@ -228,6 +237,7 @@ class worker:
         ren, added, not_res = self.check_not_in_cur()
         r_ren, d_o, l_a_t, l_r_t, l_a_f, l_r_f, shas_fun = self.get_mod_of_ren(ren)
         self.data_out_funs.extend(d_o)
+
         self.l_insn_add_t += l_a_t
         self.l_insn_add_f += l_a_f
         self.l_insn_rm_t += l_r_t
@@ -238,6 +248,7 @@ class worker:
         funs_removed = self.get_rm_funs(funs_renamed)
 
         self.l_fun_add, d_o, commits = self.get_lines_mod(added)
+
         self.data_out_funs.extend(d_o)
         for commit in commits:
             if commit not in commits_insn_applied:
@@ -254,6 +265,7 @@ class worker:
             validation.print_val_added(added)
             validation.print_val_removed(removed)
             validation.print_val_renamed(ren)
+
         self.cnt_fun_rm = self.cnt_funs(removed)
         self.cnt_fun_add = self.cnt_funs(added)
         self.cnt_fun_ren = self.cnt_funs(ren)
@@ -261,7 +273,6 @@ class worker:
         self.logger.info("Number of addded functions: %d" % self.cnt_funs(added))
         self.logger.info("Number of not resolved functions: %d" %
                                                         self.cnt_funs(not_res))
-
 
 
 
@@ -346,6 +357,9 @@ class worker:
                 result[cu].update({fun:res})
                 fun_i = "%s->%s" % (fun_old ,fun)
                 data_out.append(((fun_i),l_add_t + l_add_f, l_rm_t + l_rm_f))
+                if not fun in self.result_fun.keys():
+                    self.result_fun.update({ fun: []})
+                self.result_fun[fun].extend((shas, cu))
 
         return result, data_out, l_add_t, l_rm_t, l_add_f, l_rm_f, shas
 
@@ -397,6 +411,8 @@ class worker:
                                                         diffs[fun],
                                                         self.fun_patches[fun])
 
+                self.result_fun.update({fun:[]})
+                self.result_fun[fun].extend((commits, diffs[fun]['cu']))
 
             if len(res) == 0:
                 continue
@@ -467,6 +483,11 @@ class worker:
                                         len_rm_tot += len_rm + len(decl)
                                         commits.append(patch['commit'])
                                         data_out.append((fun,0 ,_l))
+
+                                        if not fun in self.result_fun.keys():
+                                            self.result_fun.update({fun:[]})
+                                        self.result_fun[fun].append((commits,cu))
+
                                         break
 
                         if flag == True:
