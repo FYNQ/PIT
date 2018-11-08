@@ -35,15 +35,6 @@ parser.add_argument('-a', action='store', dest='arch', required=False,
 
 CFLAGS_PPC = ' -Wno-array-bounds -Wno-unused-const-variable '
 
-def read_tags(fname):
-    f = open(fname)
-    _tags = f.readlines()
-    tags = [t.rstrip() for t in _tags]
-    f.close()
-    return tags
-
-tags = read_tags("tags.txt")
-
 
 def version_check(tag, linux_path):
     if aux.is_tag_bef(tags, tag, "v4.0") == True:
