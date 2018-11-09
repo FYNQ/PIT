@@ -75,7 +75,9 @@ def prep_tags(tags):
         f = False
         if 'rc' in tag:
             base = tag.split('-')[0]
-            main_vers[base].append(tag)
+            #New RC kernels are not considered
+            if base in main_vers.keys():
+                main_vers[base].append(tag)
         if i + 1 < len(tags):
             if 'rc' in tag and not 'rc' in tags[i+1]:
                 main_vers[base].append(base)
