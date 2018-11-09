@@ -40,7 +40,7 @@ For ssh login use: user/nopasswd
 
 ## x86 and x86_64
 
-docker-compose build  --no-cache pit_arm64 -e LINUX_SRC=/PATH_TO_LINUX_SRC
+docker-compose build  --no-cache pit_x86
 
 Port to use: 1233
 
