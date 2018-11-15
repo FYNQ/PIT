@@ -72,7 +72,11 @@ and set LINUX_SRC path in conf.py.
 
 # Kernel config
 
-Use this schema: NAME_defconfig
+Use this schema: NAME_defconfig and copy the the kernel configuration to
+
+```
+$ PIT3/src/kconfigs
+```
 
 
 # Use check_series.py
@@ -84,13 +88,16 @@ $ python3 check_series.py -f v4.13 -l v4.14.67 -k ppc_men_defconfig -a powerpc
 -k ... kernel kconfig
 -a ... architecture definition
 
-# tags.txt file
-
-On each git pull in the linux source directory the tags.txt file needs to
-be updated.
-
 
 # Results
 
 Go to /home/user/build/results
+
+Three type of results:
+
+* res_series_result_fun_from_to_kconfig
+* res_series_result_sha_from_to_kconfig
+* res_series_result_summary_from_to_kconfig
+
+
 
