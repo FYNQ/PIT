@@ -60,8 +60,6 @@ RUN mkdir -p /home/user/.ssh
 
 ADD docker/info.txt /home/user/info.txt
 ADD docker/sudoers /etc/sudoers
-ADD docker/id_dsa  /home/user/.ssh
-ADD docker/id_dsa.pub /home/user/.ssh
 
 ADD . /home/user/src
 RUN chown -R user:user /home/user
