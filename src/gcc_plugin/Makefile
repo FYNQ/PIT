@@ -7,9 +7,6 @@ SOURCES=\
 INSTALLDIR=/usr
 
 
-CC=/usr/bin/gcc
-CXX=/usr/bin/g++
-
 PLUGINDIR=$(shell $(CC) -print-file-name=plugin)
 
 CXXFLAGS=-std=gnu++11 -fPIC -Wall -g -fno-rtti -I$(PLUGINDIR)/include -l json-c
