@@ -27,10 +27,13 @@ def get_src(src_path, len_def, suffix_len):
         fname = src_path + cu[:-suffix_len]
         if "<stdin>" in fname:
             continue
-        f = codecs.open(fname, "r", encoding='utf-8', errors='replace')
+
+        try:
+            f = codecs.open(fname, "r", encoding='utf-8', errors='replace')
+        except FileNotFoundError:
+            continue
 
         lines = f.readlines()
-
         for fun in len_def[cu]:
             start = len_def[cu][fun]['start']
             end = len_def[cu][fun]['end']
