@@ -9,6 +9,7 @@ import conf
 import aux
 import build_utils
 import checker
+from shutil import rmtree
 
 global logger
 
@@ -148,10 +149,12 @@ def get_todo_tags(first, last, tags):
 
 
 
-def compile_kernel(path_proj, linux_path, kconfig, arch, tag):
+def compile_kernel(path_proj, linux_path, kconfig, arch, tag, is_last):
     logger = logging.getLogger('check_series')
     logger.info("Compile kernel in path: %s" % path_proj)
     build_utils.build_kernel(path_proj, linux_path, kconfig, arch, tag)
+    if is_last == False:
+        rmtree(linux_path)
 
 
 def data_job(tag, tag_nex, arch, path, path_nex):
@@ -236,7 +239,11 @@ def do_mp(first, last, kconfig, arch):
 
         # check if kernel has been compiled already
         if not os.path.isfile(path_proj + "/kernel_compile"):
-            jobs_kernel.append((path_proj, path_linux, kconfig, arch, do_tags[i]))
+            if i == len(do_tags)-1:
+                is_last = True
+            else:
+                is_last = False
+            jobs_kernel.append((path_proj, path_linux, kconfig, arch, do_tags[i], is_last))
         else:
             continue
 
