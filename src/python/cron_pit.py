@@ -2,13 +2,20 @@ import os
 import json
 import subprocess
 import conf
-
+import check_series
 
 linux_src = conf.LINUX_SRC
 
 exec_new_tag = True
 list_jobs = './jobs.txt'
 list_done = './done.json'
+
+
+
+res_loc = conf.BUILD_DIR + '/cron_pit/'
+
+if not os.path.isdir(res_loc):
+    os.makedirs(res_loc)
 
 
 # do_cmd: subprocess call
@@ -97,14 +104,24 @@ for _job in jobs:
 
     job = _job.split(' ')[0]
     kconfig = _job.split(' ')[1]
+    arch = _job.split(' ')[2]
     if not job in jobs_done.keys():
         todo_tags = get_todo_tag(job, tags)
         print("L: %s" % todo_tags)
-        start_job(job, todo_tags[0], todo_tags[-1:], kconfig)
+        sum_summary, sum_sha, sum_fun = check_series.do_mp(todo_tags[0], todo_tags[-1:][0], kconfig, arch)
+#        start_job(job, todo_tags[0], todo_tags[-1:], kconfig)
         jobs_done.update({job:todo_tags})
-        print("x1: %s" % jobs_done)
         with open(list_done, 'w') as f:
             json.dump(jobs_done, f)
+        prefix = res_loc + '/' + job + '_'
+        with open(prefix + 'sum' + '.json', 'w') as f:
+            json.dump(sum_summary)
+        with open(prefix + 'sha' + '.json', 'w') as f:
+            json.dump(sum_sha)
+        with open(prefix + 'fun' + '.json', 'w') as f:
+            json.dump(sum_fun)
+
+
 
     if job in jobs_done.keys():
         todos = []
@@ -117,12 +134,38 @@ for _job in jobs:
         if len(todos) == 0:
             continue
         print("todos: %s" % todos)
-        start_job(job, todos[0], todos[-1:][0], kconfig)
+        print(todo_tags[0], todo_tags[-1:])
+        sum_summary, sum_sha, sum_fun = check_series.do_mp(todo_tags[0], todo_tags[-1:][0], kconfig, arch)
+#        start_job(job, todos[0], todos[-1:][0], kconfig)
         done_lst = []
+
         with open(list_done, 'r') as f:
              done_lst = json.load(f)
         done_lst[job].extend(todos)
         with open(list_done, 'w') as f:
             json.dump(done_lst, f)
+
+
+        with open(prefix + 'sum' + '.json', 'r') as f:
+             data = json.load(f)
+        data.append(sum_summary)
+        with open(prefix + 'sum' + '.json', 'w') as f:
+            json.dump(data)
+
+
+        with open(prefix + 'sha' + '.json', 'w') as f:
+            data = json.load(f)
+        data.append(sum_sha)
+        with open(prefix + 'sha' + '.json', 'w') as f:
+            json.dump(sum_sha)
+
+
+        with open(prefix + 'fun' + '.json', 'w') as f:
+            data = json.load(f)
+        data.append(sum_fun)
+        with open(prefix + 'fun' + '.json', 'w') as f:
+            json.dump(data)
+
+
 
 
