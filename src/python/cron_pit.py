@@ -105,6 +105,7 @@ for _job in jobs:
     job = _job.split(' ')[0]
     kconfig = _job.split(' ')[1]
     arch = _job.split(' ')[2]
+    prefix = res_loc + '/' + job + '_'
     if not job in jobs_done.keys():
         todo_tags = get_todo_tag(job, tags)
         print("L: %s" % todo_tags)
@@ -113,13 +114,12 @@ for _job in jobs:
         jobs_done.update({job:todo_tags})
         with open(list_done, 'w') as f:
             json.dump(jobs_done, f)
-        prefix = res_loc + '/' + job + '_'
         with open(prefix + 'sum' + '.json', 'w') as f:
-            json.dump(sum_summary)
+            json.dump(sum_summary, f)
         with open(prefix + 'sha' + '.json', 'w') as f:
-            json.dump(sum_sha)
+            json.dump(sum_sha, f)
         with open(prefix + 'fun' + '.json', 'w') as f:
-            json.dump(sum_fun)
+            json.dump(sum_fun, f)
 
 
 
@@ -145,26 +145,24 @@ for _job in jobs:
         with open(list_done, 'w') as f:
             json.dump(done_lst, f)
 
-
         with open(prefix + 'sum' + '.json', 'r') as f:
              data = json.load(f)
         data.append(sum_summary)
         with open(prefix + 'sum' + '.json', 'w') as f:
-            json.dump(data)
+            json.dump(data, f)
 
-
-        with open(prefix + 'sha' + '.json', 'w') as f:
+        with open(prefix + 'sha' + '.json', 'r') as f:
             data = json.load(f)
         data.append(sum_sha)
         with open(prefix + 'sha' + '.json', 'w') as f:
-            json.dump(sum_sha)
+            json.dump(sum_sha, f)
 
 
-        with open(prefix + 'fun' + '.json', 'w') as f:
+        with open(prefix + 'fun' + '.json', 'r') as f:
             data = json.load(f)
         data.append(sum_fun)
         with open(prefix + 'fun' + '.json', 'w') as f:
-            json.dump(data)
+            json.dump(data, f)
 
 
 
