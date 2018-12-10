@@ -29,7 +29,6 @@ parser.add_argument('-a', action='store', dest='arch', required=True,
                     help='arch flag, can be: x86, x86_64, arm, arm64, ppc')
 
 
-parse = parser.parse_args()
 
 job_lst = []
 job_handle = []
@@ -97,7 +96,6 @@ def get_todo_tags(first, last, tags):
     # e.g do tag v4.3
     # we need v4.2, rc tags, v4.3 tag and rest
     todo_tags = []
-
     if len(first.split('.')) == 2 and not 'rc' in first:
         first_is_base = True
     else:
@@ -306,5 +304,10 @@ def do_mp(first, last, kconfig, arch):
     with open(fname, 'w') as outfile:
         json.dump(sum_fun, outfile)
 
+    return sum_summary, sum_sha, sum_fun
 
-do_mp(parse.first, parse.last, parse.kconfig, parse.arch)
+
+if __name__== "__main__":
+    parse = parser.parse_args()
+    sum_summary, sum_sha, sum_fun = do_mp(parse.first, parse.last, parse.kconfig, parse.arch)
+
