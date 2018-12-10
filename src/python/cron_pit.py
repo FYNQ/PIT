@@ -135,7 +135,9 @@ for _job in jobs:
             continue
         print("todos: %s" % todos)
         print(todo_tags[0], todo_tags[-1:])
-        sum_summary, sum_sha, sum_fun = check_series.do_mp(todo_tags[0], todo_tags[-1:][0], kconfig, arch)
+
+        sum_summary, sum_sha, sum_fun = check_series.do_mp(last_job[0],
+                                                todos[-1:][0], kconfig, arch)
 #        start_job(job, todos[0], todos[-1:][0], kconfig)
         done_lst = []
 
