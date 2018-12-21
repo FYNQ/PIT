@@ -5,6 +5,7 @@ import json
 import argparse
 import logging
 from multiprocessing import Pool
+import math
 import conf
 import aux
 import build_utils
@@ -55,10 +56,10 @@ def read_tags(fname):
     f.close()
     return tags
 
-def find_tag_item(versions, base):
-    for vers in versions:
-        if base in list(vers.keys())[0]:
-            return vers[base]
+#def find_tag_item(versions, base):
+#    for vers in versions:
+#        if base in list(vers.keys())[0]:
+#            return vers[base]
 
 def prep_tags(tags):
     idx = tags.index('v3.2')
@@ -142,7 +143,7 @@ def get_todo_tags(first, last, tags):
             if tag == last:
                 break
 
-    print("Tags todo: %s" % todo_tags)
+    #print("Tags todo: %s" % todo_tags)
     return todo_tags
 
 
@@ -151,18 +152,20 @@ def compile_kernel(path_proj, linux_path, kconfig, arch, tag, is_last):
     logger = logging.getLogger('check_series')
     logger.info("Compile kernel in path: %s" % path_proj)
     build_utils.build_kernel(path_proj, linux_path, kconfig, arch, tag)
-    if is_last == False:
-        rmtree(linux_path)
+    #if is_last == False:
+    #    rmtree(linux_path)
 
 
-def data_job(tag, tag_nex, arch, path, path_nex):
+def data_job(tag, tag_nex, arch, path, path_nex, comp_bef):
     logger = logging.getLogger('check_series')
-    logger.info("Start checker for tag: %s" % tag)
-
+    logger.info("Start checker for tag: %s %s %s" % (tag, tag_nex, comp_bef))
     worker = checker.worker(path, path_nex, tag, tag_nex, arch)
+
+
 
 # multiprocessing pool version
 def do_mp(first, last, kconfig, arch):
+    num_cpus = conf.CPUs
     flag_compile = False
     plg_arch = None
     # First run create build directory
@@ -201,76 +204,100 @@ def do_mp(first, last, kconfig, arch):
 
 
     do_tags = []
-#    tags = read_tags("tags.txt")
     tags = get_tags(conf.LINUX_SRC)
     tags_a = prep_tags(tags)
     do_tags = get_todo_tags(first, last, tags_a)
     req = read_reqs('req_compiler.txt')
-    append = False
-    cnt = 0
+    rnds = math.ceil(len(do_tags)/num_cpus)
+    print('this takes %d rounds' % rnds)
 
-    logger.info("Do tags: %s" % do_tags)
-    do_tags.append(None)
-    jobs_kernel = []
-    for i in range(0, len(do_tags)-1):
-        path_proj = "%sbuild/%s/%s/" % (conf.BASE, do_tags[i], kconfig)
+    print(do_tags)
+    for i in range(0, rnds):
+        idx_start = num_cpus *i
+        idx_end = num_cpus*i + num_cpus
+        if idx_end > len(do_tags):
+            idx_end = len(do_tags)
+        jobs_compile = []
+        jobs_compare = []
+        print('-----------------')
+        for j in range(idx_start, idx_end):
+            print('do tag: %s' % do_tags[j])
+            path_proj = "%sbuild/%s/%s/" % (conf.BASE, do_tags[j], kconfig)
 
-        if not os.path.isdir(path_proj):
-            os.makedirs(path_proj)
+            if not os.path.isdir(path_proj):
+                os.makedirs(path_proj)
 
-        path_linux = path_proj + 'linux-stable'
-
-        # check if kernel has been exported
-        if not os.path.isfile(path_proj + '/kernel_export'):
+            # export kernel
             path_linux = path_proj + 'linux-stable'
-            aux.git_export(conf.LINUX_SRC, path_proj, do_tags[i], logger)
+            aux.git_export(conf.LINUX_SRC, path_proj, do_tags[j], logger)
             aux.do_cmd("touch kernel_export", path_proj, logger)
 
-        # create diff via patch_format
-        if not os.path.isdir(path_proj + "/diffs"):
-            os.makedirs(path_proj + "diffs")
 
-            path_diffs = path_proj + "diffs"
-            if do_tags[i+1] != None:
-                aux.create_patch_series(do_tags[i], do_tags[i+1],
-                                       conf.LINUX_SRC, path_diffs, logger)
-
-        # check if kernel has been compiled already
-        if not os.path.isfile(path_proj + "/kernel_compile"):
-            if i == len(do_tags)-1:
+            if j == idx_end-2:
                 is_last = True
             else:
                 is_last = False
-            jobs_kernel.append((path_proj, path_linux, kconfig, arch, do_tags[i], is_last))
-        else:
-            continue
 
-        # checks requirements
-        if do_tags[i] in req:
-            logger.info("Tags %s has requirements: %s" %
-                                        (do_tags[i], req[do_tags[i]]))
+            job = (path_proj, path_linux, kconfig, arch, do_tags[j],  is_last)
+            jobs_compile.append(job)
 
-            aux.patch_req(path_proj + 'linux-stable/',
-                            conf.BASE + '/src/patches/',
-                            req[do_tags[i]], logger)
+            if j + 1 == len(do_tags):
+                continue
 
-    pool = Pool(conf.CPUs)
-    res = pool.starmap(compile_kernel, jobs_kernel)
-    pool.close()
-    pool.join()
-    fe_jobs = []
+            # Leftover
+            if j != 0 and idx_start == j:
+                path_cur = "%sbuild/%s/%s/" % (conf.BASE, do_tags[j - 1], kconfig)
+                path_next = "%sbuild/%s/%s/" % (conf.BASE, do_tags[j], kconfig)
 
-    for i in range(0, len(do_tags)-1):
-        if do_tags[i+1] != None:
-            logger.info("data: tag: %s next_tag: %s" % (do_tags[i], do_tags[i+1]))
-            path_cur = "%sbuild/%s/%s/" % (conf.BASE, do_tags[i], kconfig)
-            path_next = "%sbuild/%s/%s/" % (conf.BASE, do_tags[i+1], kconfig)
-            fe_jobs.append((do_tags[i], do_tags[i+1], arch, path_cur, path_next))
+                jobs_compare.append((do_tags[j-1], do_tags[j], arch, path_cur,\
+                                path_next, False))
 
-    pool = Pool(processes=conf.CPUs)
-    res = pool.starmap(data_job, fe_jobs)
-    pool.close()
-    pool.join()
+            # checks requirements
+            if do_tags[j] in req:
+                logger.info("Tags %s has requirements: %s" %
+                                            (do_tags[j], req[do_tags[j]]))
+
+                aux.patch_req(path_proj + 'linux-stable/',
+                                conf.BASE + '/src/patches/',
+                                req[do_tags[j]], logger)
+
+
+        pool = Pool(processes=num_cpus)
+        res = pool.starmap(compile_kernel, jobs_compile)
+        pool.close()
+        pool.join()
+
+    for i in range(0, rnds):
+        idx_start = num_cpus *i
+        idx_end = num_cpus*i + num_cpus
+        if idx_end > len(do_tags):
+            idx_end = len(do_tags)
+        jobs_compile = []
+        jobs_compare = []
+        print('-----------------')
+        for j in range(idx_start, idx_end):
+            if j + 1 == len(do_tags):
+                continue
+
+            path_cur = "%sbuild/%s/%s/" % (conf.BASE, do_tags[j], kconfig)
+            path_next = "%sbuild/%s/%s/" % (conf.BASE, do_tags[j+1], kconfig)
+
+            path_diffs = path_cur + "diffs"
+            os.makedirs(path_diffs)
+
+            print('create diff for %s %s ' % (do_tags[j], do_tags[j+1]))
+            aux.create_patch_series(do_tags[i], do_tags[i+1],
+                                       conf.LINUX_SRC, path_diffs, logger)
+
+
+            jobs_compare.append((do_tags[j], do_tags[j+1], arch, path_cur,\
+                                path_next, False))
+
+
+        pool = Pool(processes=num_cpus)
+        res = pool.starmap(data_job, jobs_compare)
+        pool.close()
+        pool.join()
 
     sum_summary = []
     sum_sha = []
