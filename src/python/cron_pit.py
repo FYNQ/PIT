@@ -149,7 +149,8 @@ for _job in jobs:
 
         with open(prefix + 'sum' + '.json', 'r') as f:
              data = json.load(f)
-        data.append(sum_summary)
+        for it in data_summary:
+            data.append(it)
         with open(prefix + 'sum' + '.json', 'w') as f:
             json.dump(data, f)
 
