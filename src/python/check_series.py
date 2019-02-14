@@ -241,6 +241,15 @@ def do_mp(first, last, kconfig, arch):
             job = (path_proj, path_linux, kconfig, arch, do_tags[j],  is_last)
             jobs_compile.append(job)
 
+            # checks requirements
+            if do_tags[j] in req:
+                logger.info("Tags %s has requirements: %s" %
+                                            (do_tags[j], req[do_tags[j]]))
+
+                aux.patch_req(path_proj + 'linux-stable/',
+                                conf.BASE + '/src/patches/',
+                                req[do_tags[j]], logger)
+
             if j + 1 == len(do_tags):
                 continue
 
@@ -251,15 +260,6 @@ def do_mp(first, last, kconfig, arch):
 
                 jobs_compare.append((do_tags[j-1], do_tags[j], arch, path_cur,\
                                 path_next, False))
-
-            # checks requirements
-            if do_tags[j] in req:
-                logger.info("Tags %s has requirements: %s" %
-                                            (do_tags[j], req[do_tags[j]]))
-
-                aux.patch_req(path_proj + 'linux-stable/',
-                                conf.BASE + '/src/patches/',
-                                req[do_tags[j]], logger)
 
 
         pool = Pool(processes=num_cpus)
