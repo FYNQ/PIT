@@ -121,6 +121,16 @@ for _job in jobs:
         with open(prefix + 'fun' + '.json', 'w') as f:
             json.dump(sum_fun, f)
 
+        with open(prefix + 'sum' + '.csv', 'w') as f:
+            f.write("idx hour vers p_tot p_app f_add f_rm f_ren l_add l_rm\n")
+            for n, _d in enumerate(data):
+                d = _d[2]
+                f.write("%d %f %s %d %d %d %d %d %d %d\n" %
+                        (n, d['date'], d['tag'], d['patches_tot'],\
+                        d['patches'], d['funs_add'], d['funs_rm'], \
+                        d['funs_ren'], d['lines_add'], d['lines_rm']))
+
+
 
 
     if job in jobs_done.keys():

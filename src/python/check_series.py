@@ -286,7 +286,7 @@ def do_mp(first, last, kconfig, arch):
             os.makedirs(path_diffs)
 
             print('create diff for %s %s ' % (do_tags[j], do_tags[j+1]))
-            aux.create_patch_series(do_tags[i], do_tags[i+1],
+            aux.create_patch_series(do_tags[j], do_tags[j+1],
                                        conf.LINUX_SRC, path_diffs, logger)
 
 
@@ -337,4 +337,14 @@ def do_mp(first, last, kconfig, arch):
 if __name__== "__main__":
     parse = parser.parse_args()
     sum_summary, sum_sha, sum_fun = do_mp(parse.first, parse.last, parse.kconfig, parse.arch)
+
+    with open(prefix + 'sum' + '.csv', 'a') as f:
+        f.write("idx hour vers p_tot p_app f_add f_rm f_ren l_add l_rm\n")
+        for n, _d in enumerate(sum_summary):
+            d = _d[2]
+            f.write("%d %f %s %d %d %d %d %d %d %d\n" %
+                    (n, d['date'], d['tag'], d['patches_tot'],\
+                    d['patches'], d['funs_add'], d['funs_rm'], \
+                    d['funs_ren'], d['lines_add'], d['lines_rm']))
+
 
