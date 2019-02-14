@@ -9,7 +9,7 @@
 # Run with:
 # docker-compose up
 
-version: '2'
+version: '3'
 services:
   pit_powerpc:
     build:
@@ -66,4 +66,5 @@ services:
       - "1233:22"
 volumes:
   pit_data:
+    external: true
 
