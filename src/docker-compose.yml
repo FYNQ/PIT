@@ -20,6 +20,7 @@ services:
         - SEL_CXX=/usr/bin/g++-6
     volumes:
       - pit_data:/home/user/build
+      - pit_results:/home/user/results
       - ${LINUX_SRC}:/home/user/linux-stable
 
     ports:
@@ -34,6 +35,7 @@ services:
         - SEL_CXX=/usr/bin/g++
     volumes:
       - pit_data:/home/user/build
+      - pit_results:/home/user/results
       - ${LINUX_SRC}:/home/user/linux-stable
 
     ports:
@@ -48,6 +50,7 @@ services:
         - SEL_CXX=/usr/bin/g++
     volumes:
       - pit_data:/home/user/build
+      - pit_results:/home/user/results
       - ${LINUX_SRC}:/home/user/linux-stable
     ports:
       - "1232:22"
@@ -61,10 +64,13 @@ services:
         - SEL_CXX=/usr/bin/g++
     volumes:
       - pit_data:/home/user/build
+      - pit_results:/home/user/results
       - ${LINUX_SRC}:/home/user/linux-stable
     ports:
       - "1233:22"
 volumes:
   pit_data:
+    external: true
+  pit_results:
     external: true
 
