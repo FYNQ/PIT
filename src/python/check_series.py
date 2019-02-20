@@ -221,7 +221,7 @@ def do_mp(first, last, kconfig, arch):
         jobs_compare = []
         print('-----------------')
         for j in range(idx_start, idx_end):
-            print('do tag: %s' % do_tags[j])
+            print('compile do tag: %s' % do_tags[j])
             path_proj = "%sbuild/%s/%s/" % (conf.BASE, do_tags[j], kconfig)
 
             if not os.path.isdir(path_proj):
@@ -238,9 +238,6 @@ def do_mp(first, last, kconfig, arch):
             else:
                 is_last = False
 
-            job = (path_proj, path_linux, kconfig, arch, do_tags[j],  is_last)
-            jobs_compile.append(job)
-
             # checks requirements
             if do_tags[j] in req:
                 logger.info("Tags %s has requirements: %s" %
@@ -249,6 +246,10 @@ def do_mp(first, last, kconfig, arch):
                 aux.patch_req(path_proj + 'linux-stable/',
                                 conf.BASE + '/src/patches/',
                                 req[do_tags[j]], logger)
+
+
+            job = (path_proj, path_linux, kconfig, arch, do_tags[j],  is_last)
+            jobs_compile.append(job)
 
             if j + 1 == len(do_tags):
                 continue
@@ -267,18 +268,11 @@ def do_mp(first, last, kconfig, arch):
         pool.close()
         pool.join()
 
-    for i in range(0, rnds):
-        idx_start = num_cpus *i
-        idx_end = num_cpus*i + num_cpus
-        if idx_end > len(do_tags):
-            idx_end = len(do_tags)
-        jobs_compile = []
-        jobs_compare = []
         print('-----------------')
         for j in range(idx_start, idx_end):
-            if j + 1 == len(do_tags):
-                continue
-
+            if j == len(do_tags) - 1:
+                break
+            print('analyze do tag: %i %s -> %s' % (j, do_tags[j], do_tags[j+1]))
             path_cur = "%sbuild/%s/%s/" % (conf.BASE, do_tags[j], kconfig)
             path_next = "%sbuild/%s/%s/" % (conf.BASE, do_tags[j+1], kconfig)
 
@@ -289,6 +283,8 @@ def do_mp(first, last, kconfig, arch):
             aux.create_patch_series(do_tags[j], do_tags[j+1],
                                        conf.LINUX_SRC, path_diffs, logger)
 
+            if j == idx_end - 1:
+                continue
 
             jobs_compare.append((do_tags[j], do_tags[j+1], arch, path_cur,\
                                 path_next, False))
@@ -298,6 +294,7 @@ def do_mp(first, last, kconfig, arch):
         res = pool.starmap(data_job, jobs_compare)
         pool.close()
         pool.join()
+
 
     sum_summary = []
     sum_sha = []
@@ -338,13 +335,13 @@ if __name__== "__main__":
     parse = parser.parse_args()
     sum_summary, sum_sha, sum_fun = do_mp(parse.first, parse.last, parse.kconfig, parse.arch)
 
-    with open(prefix + 'sum' + '.csv', 'a') as f:
-        f.write("idx hour vers p_tot p_app f_add f_rm f_ren l_add l_rm\n")
-        for n, _d in enumerate(sum_summary):
-            d = _d[2]
-            f.write("%d %f %s %d %d %d %d %d %d %d\n" %
-                    (n, d['date'], d['tag'], d['patches_tot'],\
-                    d['patches'], d['funs_add'], d['funs_rm'], \
-                    d['funs_ren'], d['lines_add'], d['lines_rm']))
+#    with open(prefix + 'sum' + '.csv', 'a') as f:
+#        f.write("idx hour vers p_tot p_app f_add f_rm f_ren l_add l_rm\n")
+#        for n, _d in enumerate(sum_summary):
+#            d = _d[2]
+#            f.write("%d %f %s %d %d %d %d %d %d %d\n" %
+#                    (n, d['date'], d['tag'], d['patches_tot'],\
+#                    d['patches'], d['funs_add'], d['funs_rm'], \
+#                    d['funs_ren'], d['lines_add'], d['lines_rm']))
 
 
