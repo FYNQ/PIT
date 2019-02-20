@@ -28,4 +28,5 @@ root	ALL=(ALL:ALL) ALL
 
 
 user ALL = NOPASSWD: /usr/sbin/service
+user ALL = NOPASSWD: /bin/chown
 

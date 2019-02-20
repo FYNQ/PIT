@@ -65,10 +65,10 @@ ADD docker/info.txt /home/user/info.txt
 ADD docker/sudoers /etc/sudoers
 
 ADD . /home/user/src
-RUN chown -R user:user /home/user
 
 USER user
 ENV HOME /home/user
+RUN sudo chown -R user:user /home/user
 RUN cd /home/user/src/gcc_plugin && make clean
 RUN cd /home/user/src/gcc_plugin && make
 ENTRYPOINT /home/user/src/entrypoint.sh
