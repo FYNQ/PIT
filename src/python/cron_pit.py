@@ -12,7 +12,7 @@ list_done = './done.json'
 
 
 
-res_loc = conf.BUILD_DIR + '/cron_pit/'
+res_loc = conf.BUILD_DIR + '../results/cron_pit/'
 
 if not os.path.isdir(res_loc):
     os.makedirs(res_loc)
