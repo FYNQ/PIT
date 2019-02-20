@@ -68,26 +68,26 @@ def build_kernel(proj_path, linux_path, kconfig, arch, tag):
     logger.info("make %s" % kconfig)
 
     if arch == 'x86' or arch == 'x86_64':
-        cmd = "cp %s/src/kconfigs/%s  %s/arch/x86/configs/" % \
-                    (conf.BASE, kconfig, linux_path)
+        cmd = "cp %s/src/kconfigs/%s/%s  %s/arch/x86/configs/" % \
+                    (conf.BASE, arch, kconfig, linux_path)
         aux.do_cmd(cmd, linux_path, logger)
         cmd = "make %s" % (kconfig)
 
     elif arch == 'arm':
-        cmd = "cp %s/src/kconfigs/%s  %s/arch/arm/configs/" % \
-                    (conf.BASE, kconfig, linux_path)
+        cmd = "cp %s/src/kconfigs/%s/%s  %s/arch/arm/configs/" % \
+                    (conf.BASE, arch, kconfig, linux_path)
         aux.do_cmd(cmd, linux_path, logger)
         cmd = "make ARCH=arm %s" % (kconfig)
 
     elif arch == 'arm64':
-        cmd = "cp %s/src/kconfigs/%s  %s/arch/arm64/configs/" % \
-                    (conf.BASE, kconfig, linux_path)
+        cmd = "cp %s/src/kconfigs/%s/%s  %s/arch/arm64/configs/" % \
+                    (conf.BASE, arch, kconfig, linux_path)
         aux.do_cmd(cmd, linux_path, logger)
         cmd = "make ARCH=arm64 %s" % (kconfig)
 
     elif arch == 'powerpc' or arch == 'powerpc64':
-        cmd = "cp %s/src/kconfigs/%s  %s/arch/powerpc/configs/" % \
-                    (conf.BASE, kconfig, linux_path)
+        cmd = "cp %s/src/kconfigs/%s/%s  %s/arch/powerpc/configs/" % \
+                    (conf.BASE, arch, kconfig, linux_path)
         aux.do_cmd(cmd, linux_path, logger)
         cmd = "make ARCH=%s %s" % (arch, kconfig)
 
