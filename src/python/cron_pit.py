@@ -8,11 +8,11 @@ linux_src = conf.LINUX_SRC
 
 exec_new_tag = True
 list_jobs = './jobs.txt'
-list_done = './done.json'
 
 
 
 res_loc = conf.BUILD_DIR + '../results/'
+list_done = res_loc + 'done.json'
 
 if not os.path.isdir(res_loc):
     os.makedirs(res_loc)
@@ -99,7 +99,7 @@ f.close()
 
 
 for _job in jobs:
-    if len(_job) == 0:
+    if len(_job) == 0 or _job.startswith("#"):
         continue
 
     job = _job.split(' ')[0]
