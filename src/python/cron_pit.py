@@ -12,7 +12,7 @@ list_done = './done.json'
 
 
 
-res_loc = conf.BUILD_DIR + '../results/cron_pit/'
+res_loc = conf.BUILD_DIR + '../results/'
 
 if not os.path.isdir(res_loc):
     os.makedirs(res_loc)
@@ -106,6 +106,13 @@ for _job in jobs:
     kconfig = _job.split(' ')[1]
     arch = _job.split(' ')[2]
     prefix = res_loc + '/' + job + '_'
+    res_sum_col = []
+    res_sum_col.append(["Version","Patches total", "Patches applied", \
+                             "Function added", "Function removed", \
+                             "Function renamed", "Lines added", \
+                             "Lines removed"])
+
+
     if not job in jobs_done.keys():
         todo_tags = get_todo_tag(job, tags)
         print("L: %s" % todo_tags)
@@ -120,7 +127,6 @@ for _job in jobs:
             json.dump(sum_sha, f)
         with open(prefix + 'fun' + '.json', 'w') as f:
             json.dump(sum_fun, f)
-
         with open(prefix + 'sum' + '.csv', 'w') as f:
             f.write("idx hour vers p_tot p_app f_add f_rm f_ren l_add l_rm\n")
             for n, _d in enumerate(data):
@@ -129,7 +135,9 @@ for _job in jobs:
                         (n, d['date'], d['tag'], d['patches_tot'],\
                         d['patches'], d['funs_add'], d['funs_rm'], \
                         d['funs_ren'], d['lines_add'], d['lines_rm']))
-
+                res_sum_col.append([d['tag'], d['patches_tot'],\
+                                   d['patches'], d['funs_add'], d['funs_rm'], \
+                                   d['funs_ren'], d['lines_add'], d['lines_rm']])
 
 
 
@@ -173,9 +181,18 @@ for _job in jobs:
                         d['patches'], d['funs_add'], d['funs_rm'], \
                         d['funs_ren'], d['lines_add'], d['lines_rm']))
 
+                res_sum_col.append([d['tag'], d['patches_tot'],\
+                                   d['patches'], d['funs_add'], d['funs_rm'], \
+                                   d['funs_ren'], d['lines_add'], d['lines_rm']])
+
+
+        with open(prefix + 'sum_col' + '.json', 'r') as f:
+            data = json.load(f)
 
         with open(prefix + 'sha' + '.json', 'r') as f:
             data = json.load(f)
+
+
         data.append(sum_sha)
         with open(prefix + 'sha' + '.json', 'w') as f:
             json.dump(sum_sha, f)
