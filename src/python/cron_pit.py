@@ -3,6 +3,7 @@ import json
 import subprocess
 import conf
 import check_series
+import write_data as wd
 
 linux_src = conf.LINUX_SRC
 
@@ -90,121 +91,61 @@ def start_job(job, from_tag, to_tag, kconfig):
 tags = get_tags(linux_src)
 
 jobs = open(list_jobs).read().split('\n')
-print(jobs)
 f = open(list_done, 'r')
 jobs_done = json.load(f)
 f.close()
 
-#jobs_done = open(list_done).read().split('\n')
 
 
 for _job in jobs:
     if len(_job) == 0 or _job.startswith("#"):
         continue
-
+    print(_job)
     job = _job.split(' ')[0]
     kconfig = _job.split(' ')[1]
     arch = _job.split(' ')[2]
     prefix = res_loc + '/' + job + '_'
-    res_sum_col = []
-    res_sum_col.append(["Version","Patches total", "Patches applied", \
-                             "Function added", "Function removed", \
-                             "Function renamed", "Lines added", \
-                             "Lines removed"])
-
 
     if not job in jobs_done.keys():
         todo_tags = get_todo_tag(job, tags)
-        print("L: %s" % todo_tags)
-        sum_summary, sum_sha, sum_fun = check_series.do_mp(todo_tags[0], todo_tags[-1:][0], kconfig, arch)
-#        start_job(job, todo_tags[0], todo_tags[-1:], kconfig)
-        jobs_done.update({job:todo_tags})
-        with open(list_done, 'w') as f:
-            json.dump(jobs_done, f)
-        with open(prefix + 'sum' + '.json', 'w') as f:
-            json.dump(sum_summary, f)
-        with open(prefix + 'sha' + '.json', 'w') as f:
-            json.dump(sum_sha, f)
-        with open(prefix + 'fun' + '.json', 'w') as f:
-            json.dump(sum_fun, f)
-        with open(prefix + 'sum' + '.csv', 'w') as f:
-            f.write("idx hour vers p_tot p_app f_add f_rm f_ren l_add l_rm\n")
-            for n, _d in enumerate(data):
-                d = _d[2]
-                f.write("%d %f %s %d %d %d %d %d %d %d\n" %
-                        (n, d['date'], d['tag'], d['patches_tot'],\
-                        d['patches'], d['funs_add'], d['funs_rm'], \
-                        d['funs_ren'], d['lines_add'], d['lines_rm']))
-                res_sum_col.append([d['tag'], d['patches_tot'],\
-                                   d['patches'], d['funs_add'], d['funs_rm'], \
-                                   d['funs_ren'], d['lines_add'], d['lines_rm']])
+        print("Tags todo:: %s" % todo_tags)
+        start_tag = todo_tags[0] 
+        end_tag = todo_tags[-1:][0]
+        print("First: %s  Last: %s" % (start_tag, end_tag))
+        done_lst.update({job:todo_tags})
 
-
-
-    if job in jobs_done.keys():
+    elif job in jobs_done.keys():
         todos = []
         jdone = jobs_done[job]
-        last_job = jdone[-1:]
         todo_tags = get_todo_tag(job, tags)
         for todo_tag in todo_tags:
             if not todo_tag in jdone:
                 todos.append(todo_tag)
         if len(todos) == 0:
-            continue
-        print("todos: %s" % todos)
-        print(todo_tags[0], todo_tags[-1:])
+            with open(list_done, 'r') as f:
+                done_lst = json.load(f)
+            wd.wr_results(job, done_lst, kconfig, prefix)
 
-        sum_summary, sum_sha, sum_fun = check_series.do_mp(last_job[0],
-                                                todos[-1:][0], kconfig, arch)
-#        start_job(job, todos[0], todos[-1:][0], kconfig)
-        done_lst = []
+            continue
+
+        start_tag = jdone[-1:][0]
+        end_tag = todos[-1:0][0]
 
         with open(list_done, 'r') as f:
              done_lst = json.load(f)
         done_lst[job].extend(todos)
         with open(list_done, 'w') as f:
-            json.dump(done_lst, f)
+             json.dump(done_lst, f)
 
-        with open(prefix + 'sum' + '.json', 'r') as f:
-             data = json.load(f)
-        for it in data_summary:
-            data.append(it)
-        with open(prefix + 'sum' + '.json', 'w') as f:
-            json.dump(data, f)
+    else:
+        print("Awesome - Nothing to do!")
+#        return
 
-        with open(prefix + 'sum' + '.csv', 'w') as f:
-            f.write("idx hour vers p_tot p_app f_add f_rm f_ren l_add l_rm\n")
-            for n, _d in enumerate(data):
-                d = _d[2]
-                f.write("%d %f %s %d %d %d %d %d %d %d\n" %
-                        (n, d['date'], d['tag'], d['patches_tot'],\
-                        d['patches'], d['funs_add'], d['funs_rm'], \
-                        d['funs_ren'], d['lines_add'], d['lines_rm']))
-
-                res_sum_col.append([d['tag'], d['patches_tot'],\
-                                   d['patches'], d['funs_add'], d['funs_rm'], \
-                                   d['funs_ren'], d['lines_add'], d['lines_rm']])
+    done_tags = check_series.do_mp(start_tag, end_tag, kconfig, arch)
 
 
-        with open(prefix + 'sum_col' + '.json', 'r') as f:
-            data = json.load(f)
+    with open(list_done, 'w') as f:
+        json.dump(done_lst, f)
 
-        with open(prefix + 'sha' + '.json', 'r') as f:
-            data = json.load(f)
-
-
-        data.append(sum_sha)
-        with open(prefix + 'sha' + '.json', 'w') as f:
-            json.dump(sum_sha, f)
-
-
-
-        with open(prefix + 'fun' + '.json', 'r') as f:
-            data = json.load(f)
-        data.append(sum_fun)
-        with open(prefix + 'fun' + '.json', 'w') as f:
-            json.dump(data, f)
-
-
-
+    wd.wr_results(tags, jobs_done, kconfig, prefix)
 
