@@ -33,23 +33,25 @@ def wr_results(tag, jobs_done, kconfig, prefix):
             res_sum_col_R.append([d['tag'], d['date'], d['patches_tot'],   \
                     d['patches'], d['funs_add'], d['funs_rm'], d['funs_ren'], \
                     d['lines_add'], d['lines_rm']])
-   
+
 
             res_lines_col.append([d['tag'], d['lines_add'], d['lines_rm']])
 
-            res_lines_col_R.append([d['tag'], d['date'], d['lines_add'], d['lines_rm']])
- 
+            res_lines_col_R.append([d['tag'], d['date'], d['lines_add'], \
+                    d['lines_rm']])
+
             res_patches_col.append([d['tag'], d['patches_tot'], d['patches']])
 
-            res_patches_col_R.append([d['tag'], d['date'], d['patches_tot'],   \
+            res_patches_col_R.append([d['tag'], d['date'], d['patches_tot'], \
                     d['patches']])
- 
-            res_funs_col.append([d['tag'], d['funs_add'], d['funs_rm'], d['funs_ren']])
 
-            res_funs_col_R.append([d['tag'], d['date'],d['funs_add'], d['funs_rm'], \
+            res_funs_col.append([d['tag'], d['funs_add'], d['funs_rm'],\
                     d['funs_ren']])
- 
-            
+
+            res_funs_col_R.append([d['tag'], d['date'],d['funs_add'], \
+                    d['funs_rm'], \d['funs_ren']])
+
+
     fname = prefix + 'sum_col.json'
     with open(fname, 'w') as f:
         json.dump(res_sum_col, f)
