@@ -16,6 +16,7 @@ def wr_results(tag, jobs_done, kconfig, prefix):
                              "Function added", "Function removed", \
                              "Function renamed", "Lines added", \
                              "Lines removed"])
+
     res_sum_col_R.append(["Version", "Date", "Patches total", \
                              "Patches applied", \
                              "Function added", "Function removed", \
@@ -59,6 +60,21 @@ def wr_results(tag, jobs_done, kconfig, prefix):
     fname = prefix + 'sum_col_R.json'
     with open(fname, 'w') as f:
         json.dump(res_sum_col_R, f)
+
+    fname = prefix + 'lines_col.json'
+    with open(fname, 'w') as f:
+        json.dump(res_lines_col, f)
+
+    fname = prefix + 'patches_col.json'
+    with open(fname, 'w') as f:
+        json.dump(res_patches_col, f)
+
+    fname = prefix + 'funs_col.json'
+    with open(fname, 'w') as f:
+        json.dump(res_funs_col, f)
+
+
+
 
     fname = prefix + 'sum_col_R.csv'
     with open(fname, 'w') as f:
