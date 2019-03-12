@@ -104,12 +104,12 @@ for _job in jobs:
     job = _job.split(' ')[0]
     kconfig = _job.split(' ')[1]
     arch = _job.split(' ')[2]
-    prefix = res_loc + '/' + job + '_'
+    prefix = res_loc + '/' + job.replace('.','_') + '_'
 
     if not job in jobs_done.keys():
         todo_tags = get_todo_tag(job, tags)
         print("Tags todo:: %s" % todo_tags)
-        start_tag = todo_tags[0] 
+        start_tag = todo_tags[0]
         end_tag = todo_tags[-1:][0]
         print("First: %s  Last: %s" % (start_tag, end_tag))
         done_lst.update({job:todo_tags})
