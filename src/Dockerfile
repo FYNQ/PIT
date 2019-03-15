@@ -68,7 +68,8 @@ ADD . /home/user/src
 
 USER user
 ENV HOME /home/user
+RUN cd /home/user/src && git clone git://git.kernel.org/pub/scm/linux/kernel/git/  stable/linux-stable.git
 RUN sudo chown -R user:user /home/user
 RUN cd /home/user/src/gcc_plugin && make clean
 RUN cd /home/user/src/gcc_plugin && make
-ENTRYPOINT /home/user/src/entrypoint.sh
+CMD ["sudo service ssh restart', 'tail -n 100 -f /home/user/info.txt"]
