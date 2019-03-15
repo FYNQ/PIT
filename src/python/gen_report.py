@@ -27,7 +27,7 @@ def do_cmd(cmd, path):
     out, err = process.communicate()
     process.wait()
     res = out.decode("utf-8")
-    print res
+    return res
 
 def get_tags(path):
     _tags = do_cmd('git tag --sort=v:refname', linux_src).split('\n')
@@ -65,7 +65,7 @@ for _job in jobs:
     job = _job.split(' ')[0]
     kconfig = _job.split(' ')[1]
     arch = _job.split(' ')[2]
-    prefix = res_loc + '/' + job + '_'
+    prefix = res_loc + '/' + job.replace('.','_') + '_'
     wd.wr_results(job, jobs_done, kconfig, prefix)
 
 

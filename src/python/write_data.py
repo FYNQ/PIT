@@ -50,7 +50,7 @@ def wr_results(tag, jobs_done, kconfig, prefix):
                     d['funs_ren']])
 
             res_funs_col_R.append([d['tag'], d['date'],d['funs_add'], \
-                    d['funs_rm'], \d['funs_ren']])
+                    d['funs_rm'], d['funs_ren']])
 
 
     fname = prefix + 'sum_col.json'

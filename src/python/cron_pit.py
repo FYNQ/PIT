@@ -87,7 +87,7 @@ def start_job(job, from_tag, to_tag, kconfig):
     do_cmd(cmd, cwd, None)
 
 # git pull to get new tags
-#git_pull(linux_src)
+git_pull(linux_src)
 tags = get_tags(linux_src)
 
 jobs = open(list_jobs).read().split('\n')
@@ -100,7 +100,7 @@ f.close()
 for _job in jobs:
     if len(_job) == 0 or _job.startswith("#"):
         continue
-    print(_job)
+
     job = _job.split(' ')[0]
     kconfig = _job.split(' ')[1]
     arch = _job.split(' ')[2]
@@ -108,28 +108,24 @@ for _job in jobs:
 
     if not job in jobs_done.keys():
         todo_tags = get_todo_tag(job, tags)
-        print("Tags todo:: %s" % todo_tags)
         start_tag = todo_tags[0]
         end_tag = todo_tags[-1:][0]
-        print("First: %s  Last: %s" % (start_tag, end_tag))
         done_lst.update({job:todo_tags})
 
     elif job in jobs_done.keys():
         todos = []
         jdone = jobs_done[job]
-        todo_tags = get_todo_tag(job, tags)
-        for todo_tag in todo_tags:
+        cur_tags = get_todo_tag(job, tags)
+        for todo_tag in cur_tags:
             if not todo_tag in jdone:
                 todos.append(todo_tag)
-        if len(todos) == 0:
-            with open(list_done, 'r') as f:
-                done_lst = json.load(f)
-            wd.wr_results(job, done_lst, kconfig, prefix)
 
+        if len(todos) == 0:
+            print("jipii nothing to do!")
             continue
 
         start_tag = jdone[-1:][0]
-        end_tag = todos[-1:0][0]
+        end_tag = todos[-1:][0]
 
         with open(list_done, 'r') as f:
              done_lst = json.load(f)
@@ -137,10 +133,8 @@ for _job in jobs:
         with open(list_done, 'w') as f:
              json.dump(done_lst, f)
 
-    else:
-        print("Awesome - Nothing to do!")
-#        return
 
+    print("First: %s  Last: %s" % (start_tag, end_tag))
     done_tags = check_series.do_mp(start_tag, end_tag, kconfig, arch)
 
 
