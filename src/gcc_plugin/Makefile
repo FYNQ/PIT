@@ -22,7 +22,7 @@ OBJECTS=$(patsubst %.cc,%.o,$(SOURCES))
 all: $(PLUGIN)
 
 $(PLUGIN): $(OBJECTS)
-	$(CXX) $(LDFLAGS) -o $@ -shared $+ $(LDADD) -ljson-c -liberty
+	$(CXX) -shared -ljson-c -liberty $(LDFLAGS) -o $@  $+ $(LDADD)
 	echo $(ARCH):$(CC) > compiled4
 
 %.o: %.cc
