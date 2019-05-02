@@ -21,8 +21,6 @@ services:
     volumes:
       - pit_data:/home/user/build
       - pit_results:/home/user/results
-      - ${LINUX_SRC}:/home/user/linux-stable
-
     ports:
       - "1230:22"
 
@@ -36,8 +34,6 @@ services:
     volumes:
       - pit_data:/home/user/build
       - pit_results:/home/user/results
-      - ${LINUX_SRC}:/home/user/linux-stable
-
     ports:
       - "1231:22"
 
@@ -51,7 +47,6 @@ services:
     volumes:
       - pit_data:/home/user/build
       - pit_results:/home/user/results
-      - ${LINUX_SRC}:/home/user/linux-stable
     ports:
       - "1232:22"
 
@@ -59,18 +54,27 @@ services:
     build:
       context: .
       args:
-        - SEL_ARCH=x86
+        - SEL_ARCH=x86_64
         - SEL_CC=/usr/bin/gcc
         - SEL_CXX=/usr/bin/g++
+    container_name: pit_x86_64
     volumes:
       - pit_data:/home/user/build
       - pit_results:/home/user/results
-      - ${LINUX_SRC}:/home/user/linux-stable
+    expose:
+      - "6379"
     ports:
       - "1233:22"
+    expose:
+      - "6379"
 volumes:
   pit_data:
     external: true
   pit_results:
     external: true
+
+networks:
+  default:
+    external:
+      name: nginx-proxy
 
