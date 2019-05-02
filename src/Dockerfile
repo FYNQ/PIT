@@ -1,4 +1,3 @@
-
 # Dockerfile for PIC
 
 # Build with:
@@ -25,6 +24,7 @@ ARG SEL_ARCH
 ARG SEL_CC
 ARG SEL_CXX
 ENV ARCH=${SEL_ARCH}
+ENV HOST="pit_${SEL_ARCH}"
 ENV CC=${SEL_CC}
 ENV CXX=${SEL_CXX}
 ENV cmd="make ARCH=${ARCH} CC=${SEL_CC}"
@@ -33,7 +33,7 @@ RUN echo $cmd
 RUN set -x \
  && apt-get update -qq
 
-RUN if [ ${ARCH} = "x86" ] ; then \
+RUN if [ ${ARCH} = "x86_64" ] ; then \
 set -x && apt-get install --assume-yes  gcc-6-plugin-dev; fi
 RUN if [ ${ARCH} = "powerpc" ] ; then \
 set -x && apt-get install --assume-yes gcc-6-plugin-dev-powerpc64-linux-gnu \
@@ -49,7 +49,7 @@ RUN set -x && apt-get install --assume-yes software-properties-common bc\
     bash git openssh-server libiberty-dev sudo gcc g++ libelf-dev patch bison \
     libssl-dev flex liblz4-tool
 RUN set -x && apt-get clean
-RUN pip3 install dpath python-dateutil patch
+RUN pip3 install dpath python-dateutil patch psutil APScheduler aioredis
 ENV TZ=Europe/Vienna
 RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
 RUN if [ ${ARCH} = "powerpc" ] ; then \
@@ -68,8 +68,10 @@ ADD . /home/user/src
 
 USER user
 ENV HOME /home/user
-RUN cd /home/user/src && git clone git://git.kernel.org/pub/scm/linux/kernel/git/  stable/linux-stable.git
 RUN sudo chown -R user:user /home/user
+RUN cd /home/user/src && git clone git://git.kernel.org/pub/scm/linux/kernel/git/stable/linux-stable.git
 RUN cd /home/user/src/gcc_plugin && make clean
 RUN cd /home/user/src/gcc_plugin && make
-CMD ["sudo service ssh restart', 'tail -n 100 -f /home/user/info.txt"]
+CMD sudo service ssh restart \
+    && python3 /home/user/src/python/pit_redis.py start \
+    && tail -n 100 -f /home/user/info.txt
