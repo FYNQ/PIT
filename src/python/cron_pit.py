@@ -141,5 +141,5 @@ for _job in jobs:
     with open(list_done, 'w') as f:
         json.dump(done_lst, f)
 
-    wd.wr_results(tags, jobs_done, kconfig, prefix)
+    wd.wr_results(job, jobs_done, kconfig, prefix)
 
