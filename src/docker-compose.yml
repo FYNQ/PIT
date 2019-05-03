@@ -21,6 +21,7 @@ services:
     volumes:
       - pit_data:/home/user/build
       - pit_results:/home/user/results
+      - linux_src:/home/user/src/linux-stable
     ports:
       - "1230:22"
 
@@ -34,6 +35,7 @@ services:
     volumes:
       - pit_data:/home/user/build
       - pit_results:/home/user/results
+      - linux_src:/home/user/src/linux-stable
     ports:
       - "1231:22"
 
@@ -47,6 +49,7 @@ services:
     volumes:
       - pit_data:/home/user/build
       - pit_results:/home/user/results
+      - linux_src:/home/user/src/linux-stable
     ports:
       - "1232:22"
 
@@ -61,17 +64,22 @@ services:
     volumes:
       - pit_data:/home/user/build
       - pit_results:/home/user/results
+      - linux_src:/home/user/src/linux-stable
     expose:
       - "6379"
     ports:
       - "1233:22"
     expose:
       - "6379"
+
 volumes:
   pit_data:
     external: true
   pit_results:
     external: true
+  linux_src:
+    external: true
+
 
 networks:
   default:
