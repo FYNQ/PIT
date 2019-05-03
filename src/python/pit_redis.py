@@ -265,7 +265,7 @@ def start(name, arch, loop):
     global scheduler
     scheduler = BackgroundScheduler()
     scheduler.start()
-    scheduler.add_job(do_job, 'interval', minutes=1, id='cron_pit')
+    scheduler.add_job(do_job, 'interval', minutes=100, id='cron_pit')
 
     state = 'wait_for_connection'
     asyncio.ensure_future(ping_register(name, arch))
@@ -308,9 +308,9 @@ class PITRedisDaemon(Daemon):
                 host = os.environ['HOST']
                 arch = os.environ['ARCH']
                 start(host, arch, loop)
-    def stop():
-        global scheduler
-        scheduler.shutdown()
+#    def stop(self):
+#        global scheduler
+#        scheduler.shutdown()
 
 
 if __name__ == '__main__':
@@ -346,4 +346,5 @@ if __name__ == '__main__':
             sys.stderr.write('%s\n' % err)
 
         sys.exit(1)
+
 
