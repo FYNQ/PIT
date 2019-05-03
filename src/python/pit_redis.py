@@ -1,17 +1,29 @@
-import time
-import traceback
-import json
 import os
+import sys
+import time
+import json
 import psutil
 import subprocess
 import asyncio
 import aioredis
+import argparse
+import threading
+import cron_pit
+
+from mydaemon import Daemon
 
 from apscheduler.schedulers.background import BackgroundScheduler
-scheduler = BackgroundScheduler()
-scheduler.start()
 
 
+DAEMON_NAME = 'PITREDIS'
+DAEMON_STOP_TIMEOUT = 10
+PIDFILE = '/tmp/pit_redis.pid'
+RUNFILE = '/tmp/pit_redis.run'
+DEBUG = 1
+
+
+global scheduler
+global th_cron_pit
 global state
 
 def do_cmd(cmd, path):
@@ -25,15 +37,27 @@ def cron_pit_running():
     return False
 
 
-def cron_job():
-    if not cron_pit_running():
-        print('do cron job')
-        do_cmd('python3 cron_pit.py', './')
-    else:
-        print('cron_pit is active!')
 
+class thcpit(threading.Thread):
+    def __init__(self):
+        print('init thread')
+        threading.Thread.__init__(self)
+        self._state = False
 
-scheduler.add_job(cron_job, 'interval', minutes=1, id='cron_pit')
+    def run(self):
+        self._state = True
+        cron_pit.start()
+
+def do_job():
+    print('APTScheduler')
+    global th_cron_pit
+    if th_cron_pit == False:
+        th_cron_pit = thcpit()
+        th_cron_pit.start()
+    elif th_cron_pit.isAlive() == False:
+        th_cron_pit = thcpit()
+        th_cron_pit.start()
+
 
 async def ping_register(name, arch):
     global state
@@ -236,22 +260,41 @@ async def cmd_mux(name, arch):
     sub.close()
     pub.close()
 
-def start(name, arch):
+def start(name, arch, loop):
     global state
-    loop = asyncio.get_event_loop()
+    global scheduler
+    scheduler = BackgroundScheduler()
+    scheduler.start()
+    scheduler.add_job(do_job, 'interval', minutes=1, id='cron_pit')
+
+    state = 'wait_for_connection'
     asyncio.ensure_future(ping_register(name, arch))
 
     loop.run_forever()
     print("Done")
 
+def get_args():
+    try:
+        parser =  argparse.ArgumentParser()
+        parser.add_argument('action', help='action',
+                            choices=['start', 'stop', 'restart'])
+        args = parser.parse_args()
 
+        result = (args.action, )
+    except Exception as err:
+        if DEBUG:
+            raise
+        else:
+            sys.stderr.write('%s\n' % (err))
+
+        result = (None, )
+
+    return result
 
 class PITRedisDaemon(Daemon):
     def run(self):
-        '''
-        Daemon start to run here.
-        '''
         # Run while there is no stop request.
+        loop = asyncio.get_event_loop()
         while os.path.exists(RUNFILE):
             try:
                 pass
@@ -264,11 +307,19 @@ class PITRedisDaemon(Daemon):
                # Start
                 host = os.environ['HOST']
                 arch = os.environ['ARCH']
-                start(host, arch)
+                start(host, arch, loop)
+    def stop():
+        global scheduler
+        scheduler.shutdown()
 
 
 if __name__ == '__main__':
     global state
+    global scheduler
+    global th_cron_pit
+
+    scheduler = None
+    th_cron_pit = False
     state = 'wait_for_connection'
 
     try:
