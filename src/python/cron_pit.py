@@ -10,16 +10,10 @@ linux_src = conf.LINUX_SRC
 exec_new_tag = True
 list_jobs = '/home/user/src/python/jobs.txt'
 
-
-
 res_loc = conf.BUILD_DIR + '../results/'
 list_done = res_loc + 'done.json'
 
-if not os.path.isdir(res_loc):
-    os.makedirs(res_loc)
 
-
-# do_cmd: subprocess call
 
 def read_tags(fname):
     f = open(fname)
@@ -86,6 +80,10 @@ def start():
     # git pull to get new tags
     git_pull(linux_src)
     tags = get_tags(linux_src)
+    if not os.path.isfile(list_jobs):
+        print("Please cop jobs_example.txt to jobs.txt")
+        print("And edit jobs.txt")
+        return
 
     jobs = open(list_jobs).read().split('\n')
     f = open(list_done, 'r')
@@ -100,6 +98,8 @@ def start():
         kconfig = _job.split(' ')[1]
         arch = _job.split(' ')[2]
         prefix = res_loc + '/' + job.replace('.','_') + '_'
+        with open(list_done, 'r') as f:
+            done_lst = json.load(f)
 
         if not job in jobs_done.keys():
             todo_tags = get_todo_tag(job, tags)
@@ -122,8 +122,6 @@ def start():
             start_tag = jdone[-1:][0]
             end_tag = todos[-1:][0]
 
-            with open(list_done, 'r') as f:
-                 done_lst = json.load(f)
             done_lst[job].extend(todos)
             with open(list_done, 'w') as f:
                  json.dump(done_lst, f)
