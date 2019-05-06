@@ -208,7 +208,7 @@ def do_mp(first, last, kconfig, arch):
     tags = get_tags(conf.LINUX_SRC)
     tags_a = prep_tags(tags)
     do_tags = get_todo_tags(first, last, tags_a)
-    req = read_reqs('req_compiler.txt')
+    req = read_reqs('/home/user/src/python/req_compiler.txt')
     rnds = math.ceil(len(do_tags)/num_cpus)
     print('this takes %d rounds' % rnds)
 
@@ -343,5 +343,4 @@ if __name__== "__main__":
     with open(fname, 'w') as f:
         f_csv = csv.writer(f)
         f.writerows(f_csv)
-
 
