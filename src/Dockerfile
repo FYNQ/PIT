@@ -66,9 +66,13 @@ ADD docker/sudoers /etc/sudoers
 
 ADD . /home/user/src
 
+RUN sudo chown -R user:user /home/user
+RUN mkdir /home/user/build && chown -R user:user /home/user/build
+RUN mkdir /home/user/results && chown -R user:user /home/user/results
+
+
 USER user
 ENV HOME /home/user
-RUN sudo chown -R user:user /home/user
 RUN cd /home/user/src/gcc_plugin && make clean
 RUN cd /home/user/src/gcc_plugin && make
 CMD sudo service ssh restart \
