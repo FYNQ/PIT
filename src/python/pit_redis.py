@@ -265,7 +265,7 @@ def start(name, arch, loop):
     global scheduler
     scheduler = BackgroundScheduler()
     scheduler.start()
-    scheduler.add_job(do_job, 'interval', minutes=100, id='cron_pit')
+    scheduler.add_job(do_job, 'interval', minutes=2, id='cron_pit')
 
     state = 'wait_for_connection'
     asyncio.ensure_future(ping_register(name, arch))
@@ -317,7 +317,8 @@ if __name__ == '__main__':
     global state
     global scheduler
     global th_cron_pit
-
+    global th_cron_pit
+    th_cron_pit = False
     scheduler = None
     th_cron_pit = False
     state = 'wait_for_connection'
