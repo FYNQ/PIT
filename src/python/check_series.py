@@ -224,6 +224,9 @@ def do_mp(first, last, kconfig, arch):
         for j in range(idx_start, idx_end):
             print('compile do tag: %s' % do_tags[j])
             path_proj = "%sbuild/%s/%s/" % (conf.BASE, do_tags[j], kconfig)
+            if os.path.isfile(path_proj + 'kernel_export'):
+                print('already done!')
+                continue
 
             if not os.path.isdir(path_proj):
                 os.makedirs(path_proj)
@@ -278,11 +281,12 @@ def do_mp(first, last, kconfig, arch):
             path_next = "%sbuild/%s/%s/" % (conf.BASE, do_tags[j+1], kconfig)
 
             path_diffs = path_cur + "diffs"
-            os.makedirs(path_diffs)
+            if not os.path.isdir(path_diffs):
+                os.makedirs(path_diffs)
 
-            print('create diff for %s %s ' % (do_tags[j], do_tags[j+1]))
-            aux.create_patch_series(do_tags[j], do_tags[j+1],
-                                       conf.LINUX_SRC, path_diffs, logger)
+                print('create diff for %s %s ' % (do_tags[j], do_tags[j+1]))
+                aux.create_patch_series(do_tags[j], do_tags[j+1],
+                                        conf.LINUX_SRC, path_diffs, logger)
 
             if j == idx_end - 1:
                 continue
@@ -303,3 +307,4 @@ def do_mp(first, last, kconfig, arch):
 if __name__== "__main__":
     parse = parser.parse_args()
     done_tags = do_mp(parse.first, parse.last, parse.kconfig, parse.arch)
+
