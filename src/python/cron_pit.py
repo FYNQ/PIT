@@ -134,7 +134,7 @@ def start():
         with open(list_done, 'w') as f:
             json.dump(done_lst, f)
 
-        wd.wr_results(job, jobs_done, kconfig, prefix)
+        wd.wr_results(job, done_lst, kconfig, prefix)
 
 if __name__ == '__main__':
     start()
