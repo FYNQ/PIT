@@ -185,7 +185,6 @@ class worker:
         fname_f = self.path_cur + 'functions_data.json'
         fname_s = self.path_cur + 'summary_data.json'
         fname_sha = self.path_cur + 'sha_lst.json'
-
         with open(fname_f, 'w') as outfile:
             json.dump(self.data_out_funs, outfile)
         with open(fname_s, 'w') as outfile:
@@ -222,12 +221,13 @@ class worker:
         commits_insn_applied = []
 
         self.logger.info("Get stats for function diffs ...\n")
-        r_fun, l_a_t, l_r_t, l_a_f, l_r_f, shas_fun = self.get_mod_in_fun(
+        r_fun, d_o, l_a_t, l_r_t, l_a_f, l_r_f, shas_fun = self.get_mod_in_fun(
                                                                 self.fun_diffs)
         self.l_insn_add_t += l_a_t
         self.l_insn_add_f += l_a_f
         self.l_insn_rm_t += l_r_t
         self.l_insn_rm_f += l_r_f
+        self.data_out_funs.extend(d_o)
 
         for commit in shas_fun:
             if commit not in commits_insn_applied:
@@ -247,7 +247,7 @@ class worker:
         funs_renamed = self.get_funs(ren)
         funs_removed = self.get_rm_funs(funs_renamed)
 
-        self.l_fun_add, d_o, commits = self.get_lines_mod(added)
+        self.l_fun_add, d_o, commits = self.get_lines_mod(added, 'ADD')
 
         self.data_out_funs.extend(d_o)
         for commit in commits:
@@ -305,7 +305,7 @@ class worker:
         else:
             return None
 
-    def get_lines_mod(self, data):
+    def get_lines_mod(self, data, mode):
         l_cnt = 0
         commits = []
         data_out = []
@@ -321,8 +321,7 @@ class worker:
                     l_cnt += cnt
                     if it['commit'] not in commits:
                         commits.append(it['commit'])
-                    data_out.append((fun, cnt, 0))
-
+                    data_out.append((fun, cnt, 0, cu, [it['commit']], mode))
 
         return l_cnt, data_out, commits
 
@@ -356,7 +355,7 @@ class worker:
                                 self.fun_patches_nf[fun])
                 result[cu].update({fun:res})
                 fun_i = "%s->%s" % (fun_old ,fun)
-                data_out.append(((fun_i),l_add_t + l_add_f, l_rm_t + l_rm_f))
+                data_out.append(((fun_i),l_add_t + l_add_f, l_rm_t + l_rm_f, cu, shas, 'R'))
                 if not fun in self.result_fun.keys():
                     self.result_fun.update({ fun: []})
                 self.result_fun[fun].extend((shas, cu))
@@ -393,8 +392,8 @@ class worker:
 
         h_insn_tot = 0
         h_insn_app = 0
-        commits_app = []
-
+        shas = []
+        data_out = []
         for fun in diffs.keys():
             if fun not in self.fun_patches.keys():
                 self.logger.info("Missing patch for fun: %s" % fun)
@@ -411,6 +410,8 @@ class worker:
                                                         diffs[fun],
                                                         self.fun_patches[fun])
 
+                data_out.append(((fun),l_add_t + l_add_f, l_rm_t + l_rm_f, \
+                        diffs[fun]['cu'], commits, 'MOD'))
                 self.result_fun.update({fun:[]})
                 self.result_fun[fun].extend((commits, diffs[fun]['cu']))
 
@@ -420,15 +421,15 @@ class worker:
             result.update(res)
 
             for i in commits:
-                if i not in commits_app:
-                    commits_app.append(i)
+                if i not in shas:
+                    shas.append(i)
 
             l_i_add_t += l_add_t
             l_i_rm_t += l_rm_t
             l_i_add_f += l_add_f
             l_i_rm_f += l_rm_f
 
-        return result, l_i_add_t, l_i_rm_t, l_i_add_f, l_i_rm_f, commits_app
+        return result, data_out, l_i_add_t, l_i_rm_t, l_i_add_f, l_i_rm_f, shas
 
     def decl_in_patch(self, data, cu, hunk_text):
         for fun in data[cu].keys():
@@ -482,7 +483,9 @@ class worker:
                                                         }})
                                         len_rm_tot += len_rm + len(decl)
                                         commits.append(patch['commit'])
-                                        data_out.append((fun,0 ,_l))
+                                        data_out.append((fun,0 ,_l,
+                                                         cu,
+                                                         [patch['commit']], 'RM'))
 
                                         if not fun in self.result_fun.keys():
                                             self.result_fun.update({fun:[]})
@@ -595,17 +598,4 @@ class worker:
                 l.append(fun)
         return l
 
-
-
-path_cur = '/home/markus/work_ot/PIT/build/v4.3/ppc_men_defconfig/'
-path_nex = '/home/markus/work_ot/PIT/build/v4.4-rc1/ppc_men_defconfig/'
-
-#a = worker(path_cur, path_nex, 'v4.3', 'v4.4-rc1', 'ppc')
-
-#format_patches = aux.get_patches_fp(ppath + 'diffs/')
-
-#fun_patches = aux.get_patches(ppath + 'fun_diffs/')
-#cu_patches = aux.get_patch_lst_by_cu(ppath + 'diffs/')
-
-#analyse_fun_diffs(fun_patches, cu_patches)
 
