@@ -302,45 +302,4 @@ def do_mp(first, last, kconfig, arch):
 
 if __name__== "__main__":
     parse = parser.parse_args()
-    prefix = conf.BUILD_DIR + '/reports/'
     done_tags = do_mp(parse.first, parse.last, parse.kconfig, parse.arch)
-    res_sum_col = []
-    res_sum_col_R = []
-
-    res_sum_col.append(["Version","Patches total", "Patches applied", \
-                             "Function added", "Function removed", \
-                             "Function renamed", "Lines added", \
-                             "Lines removed"])
-    res_sum_col_R.append(["Version", "Date", "Patches total", \
-                             "Patches applied", \
-                             "Function added", "Function removed", \
-                             "Function renamed", "Lines added", \
-                             "Lines removed"])
-
-    for tag in done_tagsi[:-1]:
-            fname = conf.BUILD_DIR + '/%s/%s/summary_data.json' \
-                                            % (tag, parse.kconfig)
-            with open(fname, 'r') as f:
-                d = json.load(f)
-
-            res_sum_col.append([d['tag'], d['patches_tot'], d['patches'], \
-                    d['funs_add'], d['funs_rm'], d['funs_ren'], d['lines_add'], \
-                    d['lines_rm']])
-
-            res_sum_col_R.append([d['tag'], d['date'], d['patches_tot'],   \
-                    d['patches'], d['funs_add'], d['funs_rm'], d['funs_ren'], \
-                    d['lines_add'], d['lines_rm']])
-
-    fname = prefix + ('sum_%s_%s_col.json' % (parse.first, parse.last))
-    with open(fname, 'w') as f:
-        json.dump(res_sum_col, f)
-
-    fname = prefix + 'sum_col_R.json'
-    with open(fname, 'w') as f:
-        json.dump(res_sum_col_R, f)
-
-    fname = prefix + 'sum_col_R.csv'
-    with open(fname, 'w') as f:
-        f_csv = csv.writer(f)
-        f.writerows(f_csv)
-
