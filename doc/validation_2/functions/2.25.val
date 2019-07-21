@@ -1,0 +1,126 @@
+
+PIT Validation setup - fun: task_name
+
+Author: Markus Kreidl
+Review: Reviewer (if applicable else ----)
+Date: 2018-05-30
+Expires: 000
+Keywords: validation task_name
+Status: initial draft
+Phase: validation
+Ref:
+QA: initial
+Tracking: ?
+Format: ascii text
+
+
+# Validate function
+
+task_name                   fs/proc/array.c
+
+## Result PIT
+
+Modified by 1 patch.
+
+- PATCH: 10982-fs-proc-array.c-set-overflow-flag-in-case-of-error.patch
+
+{   'add_cnt_f': 0,
+    'add_cnt_t': 5,
+    'commit': '3a49f3d2a10dfb27411d321900197a3d6c52405b',
+    'cu': 'fs/proc/array.c',
+    'fun': 'task_name',
+    'lines_add': [   (94, True),
+                     (96, True),
+                     (102, True),
+                     (103, True),
+                     (104, True)],
+    'lines_rm': [(99, True), (102, True), (103, True), (105, True)],
+    'rm_cnt_f': 0,
+    'rm_cnt_t': 4}
+
+
+## Create git diff with showlinenum
+
+$ git diff v4.3 fs/proc/array.c | ./showlinenum.awk > task_name.diff
+
+Extract section for function task_name
+
+@@ -91,18 +91,18 @@
+91: static inline void task_name(struct seq_file *m, struct task_struct *p)
+92: {
+93:     char *buf;
+94:+    size_t size;
+95:     char tcomm[sizeof(p->comm)];
+96:+    int ret;
+97: 
+98:     get_task_comm(tcomm, p);
+99: 
+100:    seq_puts(m, "Name:\t");
+   :-   buf = m->buf + m->count;
+101: 
+   :-   /* Ignore error for now */
+   :-   buf += string_escape_str(tcomm, buf, m->size - m->count,
+   :-                ESCAPE_SPACE | ESCAPE_SPECIAL, "\n\\");
+102:+   size = seq_get_buf(m, &buf);
+103:+   ret = string_escape_str(tcomm, buf, size, ESCAPE_SPACE | ESCAPE_SPECIAL,   "\n\\");
+104:+   seq_commit(m, ret < size ? ret : -1);
+105: 
+   :-   m->count = buf - m->buf;
+106:    seq_putc(m, '\n');
+107: }
+108: 
+
+
+Removed Lines:
+
+Check fs/proc/array.c at line 99 with
+
+$ sed -n '99,99p' fs/proc/array.c
+	buf = m->buf + m->count;
+
+Check fs/proc/array.c at lines from 103 to 103 with
+
+$ sed -n '102,103p' fs/proc/array.c
+	buf += string_escape_str(tcomm, buf, m->size - m->count,
+				 ESCAPE_SPACE | ESCAPE_SPECIAL, "\n\\");
+
+Check fs/proc/array.c at line  with
+
+$ sed -n '105,105p' fs/proc/array.c
+	m->count = buf - m->buf;
+
+
+## Verify patch
+
+
+@@ -91,18 +91,18 @@
+ static inline void task_name(struct seq_file *m, struct task_struct *p)
+ {
+    char *buf;
++   size_t size;
+    char tcomm[sizeof(p->comm)];
++   int ret;
+
+    get_task_comm(tcomm, p);
+
+    seq_puts(m, "Name:\t");
+-   buf = m->buf + m->count;
+
+-   /* Ignore error for now */
+-   buf += string_escape_str(tcomm, buf, m->size - m->count,
+-                ESCAPE_SPACE | ESCAPE_SPECIAL, "\n\\");
++   size = seq_get_buf(m, &buf);
++   ret = string_escape_str(tcomm, buf, size, ESCAPE_SPACE | ESCAPE_SPECIAL,       "\n\\");
++   seq_commit(m, ret < size ? ret : -1);
+
+-   m->count = buf - m->buf;
+    seq_putc(m, '\n');
+ }
+
+
+## Result
+
+lines added   : ok
+lines removed : ok
+line numbers  : ok
+

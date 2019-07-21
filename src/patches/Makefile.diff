@@ -1,0 +1,22 @@
+diff --git a/Makefile b/Makefile
+index adddd11c3b3b..db0669eb8e4c 100644
+--- a/Makefile
++++ b/Makefile
+@@ -613,7 +613,7 @@ endif
+ 
+ # We trigger additional mismatches with less inlining
+ ifdef CONFIG_DEBUG_SECTION_MISMATCH
+-KBUILD_CFLAGS += $(call cc-option, -fno-inline-functions-called-once)
++KBUILD_CFLAGS += $(call cc-option, -fno-inline-functions-called-once, -fno-pie)
+ endif
+ 
+ # arch Makefile may override CC so keep this after arch Makefile is included
+@@ -621,7 +621,7 @@ NOSTDINC_FLAGS += -nostdinc -isystem $(shell $(CC) -print-file-name=include)
+ CHECKFLAGS     += $(NOSTDINC_FLAGS)
+ 
+ # warn about C99 declaration after statement
+-KBUILD_CFLAGS += $(call cc-option,-Wdeclaration-after-statement,)
++KBUILD_CFLAGS += $(call cc-option,-Wdeclaration-after-statement, -fno-pie,)
+ 
+ # disable pointer signed / unsigned warnings in gcc 4.0
+ KBUILD_CFLAGS += $(call cc-disable-warning, pointer-sign)

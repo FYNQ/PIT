@@ -1,0 +1,113 @@
+
+PIT Validation setup - fun: of_irq_init
+
+Author: Markus Kreidl
+Review: Reviewer (if applicable else ----)
+Date: 2018-05-30
+Expires: 000
+Keywords: validation of_irq_init
+Status: initial draft
+Phase: validation
+Ref:
+QA: initial
+Tracking: ?
+Format: ascii text
+
+
+# Validate function
+
+of_irq_init                     drivers/of/irq.c
+
+## Result PIT
+
+Modified by 1 patch.
+
+- PATCH: 8476-of-irq-add-missing-of_node_put.patch
+
+{   'add_cnt_f': 0,
+    'add_cnt_t': 4,
+    'commit': '8363ccb917c6bd497392f5a6b716f46213d86495',
+    'cu': 'drivers/of/irq.c',
+    'fun': 'of_irq_init',
+    'lines_add': [(504, True), (505, True), (509, True), (580, True)],
+    'lines_rm': [(504, True), (507, True)],
+    'rm_cnt_f': 0,
+    'rm_cnt_t': 2}
+
+
+## Create git diff with showlinenum
+
+$ git diff v4.3 drivers/of/irq.c | ./showlinenum.awk > of_irq_init.diff
+
+Extract section for function of_irq_init
+
+@@ -501,10 +501,12 @@ void __init of_irq_init(const struct of_device_id *matches)
+501:         * pointer, interrupt-parent device_node etc.
+502:         */
+503:        desc = kzalloc(sizeof(*desc), GFP_KERNEL);
+   :-       if (WARN_ON(!desc))
+504:+       if (WARN_ON(!desc)) {
+505:+           of_node_put(np);
+506:            goto err;
+507:+       }
+508: 
+   :-       desc->dev = np;
+509:+       desc->dev = of_node_get(np);
+510:        desc->interrupt_parent = of_irq_find_parent(np);
+511:        if (desc->interrupt_parent == np)
+512:            desc->interrupt_parent = NULL;
+@@ -575,26 +577,192 @@ void __init of_irq_init(const struct of_device_id *matches)
+577: err:
+578:    list_for_each_entry_safe(desc, temp_desc, &intc_desc_list, list) {
+579:        list_del(&desc->list);
+580:+       of_node_put(desc->dev);
+581:        kfree(desc);
+582:    }
+583: }
+
+
+Removed Lines:
+
+Check drivers/of/irq.c at line 504 with
+
+$ sed -n '504,504p' drivers/of/irq.c
+		if (WARN_ON(!desc))
+
+Check drivers/of/irq.c at line 507 with
+
+$ sed -n '507,507p' drivers/of/irq.c
+		desc->dev = np;
+
+## Verify patch
+
+@@ -501,10 +501,12 @@ void __init of_irq_init(const struct of_device_id *matches)
+         * pointer, interrupt-parent device_node etc.
+         */
+        desc = kzalloc(sizeof(*desc), GFP_KERNEL);
+-       if (WARN_ON(!desc))
++       if (WARN_ON(!desc)) {
++           of_node_put(np);
+            goto err;
++       }
+
+-       desc->dev = np;
++       desc->dev = of_node_get(np);
+        desc->interrupt_parent = of_irq_find_parent(np);
+        if (desc->interrupt_parent == np)
+            desc->interrupt_parent = NULL;
+@@ -575,6 +577,7 @@ void __init of_irq_init(const struct of_device_id *matches)
+ err:
+    list_for_each_entry_safe(desc, temp_desc, &intc_desc_list, list) {
+        list_del(&desc->list);
++       of_node_put(desc->dev);
+        kfree(desc);
+    }
+ }
+
+
+## Result
+
+lines added   : ok
+lines removed : ok
+line numbers  : ok
+

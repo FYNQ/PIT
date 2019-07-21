@@ -1,0 +1,81 @@
+
+PIT Validation - fun: arch_get_unmapped_area_topdown
+
+Author: Markus Kreidl
+Review: Reviewer (if applicable else ----)
+Date: 2018-04-05
+Expires: 000
+Keywords: setup, configuration, pit
+Status: initial draft
+Phase: validation
+Ref:
+QA: initial
+Tracking: ?
+Format: ascii text
+
+
+# Validate function
+
+arch_get_unmapped_area_topdown      mm/mmap.c
+
+## Result PIT
+
+Changed by 1 patch.
+
+- PATH: 10780-mm-mmap-use-offset_in_page-macro.patch
+
+{   'add_cnt_f': 0,
+    'add_cnt_t': 1,
+    'commit': 'de1741a1333ea37694dddf7c94aa4cf2d0e58912',
+    'cu': 'mm/mmap.c',
+    'fun': 'arch_get_unmapped_area_topdown',
+    'lines_add': [(1990, True)],
+    'lines_rm': [(1992, True)],
+    'rm_cnt_f': 0,
+    'rm_cnt_t': 1}
+
+
+## Create git diff with showlinenum
+
+$ git diff v4.3  mm/mmap.c | ./showlinenum.awk > arch_get_unmapped_area_topdown.diff
+
+Extract section for function arch_get_unmapped_area_topdown
+
+@@ -1989,7 +1987,7 @@ arch_get_unmapped_area_topdown(struct file *filp, const      unsigned long addr0,
+1987:    * can happen with large stack limits and large mmap()
+1988:    * allocations.
+1989:    */
+    :-  if (addr & ~PAGE_MASK) {
+1990:+  if (offset_in_page(addr)) {
+1991:       VM_BUG_ON(addr != -ENOMEM);
+1992:       info.flags = 0;
+1993:       info.low_limit = TASK_UNMAPPED_BASE;
+
+
+Removed Lines:
+
+Check net/core/sock.c at line 1581 with
+
+$ sed -n '1992,1992p' mm/mmap.c
+	if (addr & ~PAGE_MASK) {
+
+
+## Verify patch
+
+@@ -1989,7 +1989,7 @@ arch_get_unmapped_area_topdown(struct file *filp, const      unsigned long addr0,
+     * can happen with large stack limits and large mmap()
+     * allocations.
+     */
+-   if (addr & ~PAGE_MASK) {
++   if (offset_in_page(addr)) {
+        VM_BUG_ON(addr != -ENOMEM);
+        info.flags = 0;
+        info.low_limit = TASK_UNMAPPED_BASE;
+
+
+## Result
+
+lines added   : ok
+lines removed : ok
+line numbers  : ok
+

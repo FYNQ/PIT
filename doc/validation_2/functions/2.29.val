@@ -1,0 +1,185 @@
+
+PIT Validation setup - fun: watchdog_set_timeout
+
+Author: Markus Kreidl
+Review: Reviewer (if applicable else ----)
+Date: 2018-05-30
+Expires: 000
+Keywords: validation watchdog_set_timeout
+Status: initial draft
+Phase: validation
+Ref:
+QA: initial
+Tracking: ?
+Format: ascii text
+
+
+# Validate function
+
+watchdog_set_timeout                drivers/watchdog/watchdog_dev.c
+
+## Result PIT
+
+Modified by 1 patch.
+
+- PATCH: 
+
+{   'add_cnt_f': 0,
+    'add_cnt_t': 7,
+    'commit': 'bc794ac3b5836ee2b2420b0597f33538ad100be0',
+    'cu': 'drivers/watchdog/watchdog_dev.c',
+    'fun': 'watchdog_set_timeout',
+    'lines_add': [   (194, True),
+                     (199, True),
+                     (202, True),
+                     (205, True),
+                     (207, True),
+                     (212, True),
+                     (215, True)],
+    'lines_rm': [   (194, True),
+                    (199, True),
+                    (200, True),
+                    (203, True),
+                    (206, True),
+                    (208, True),
+                    (213, True),
+                    (216, True)],
+    'rm_cnt_f': 0,
+    'rm_cnt_t': 8}
+
+
+
+## Create git diff with showlinenum
+
+$ git diff v4.3 drivers/watchdog/watchdog_dev.c | ./showlinenum.awk > watchdog_set_timeout.diff
+
+Extract section for function show_free_areas
+
+@@ -51,7 +51,7 @@ static struct watchdog_device *old_wdd;
+<snip>
+189:  * watchdog_set_timeout: set the watchdog timer timeout
+   :- * @wddev: the watchdog device to set the timeout for
+190:+ * @wdd: the watchdog device to set the timeout for
+191:  * @timeout: timeout to set in seconds
+192:  */
+193: 
+   :-static int watchdog_set_timeout(struct watchdog_device *wddev,
+194:+static int watchdog_set_timeout(struct watchdog_device *wdd,
+195:                            unsigned int timeout)
+196: {
+197:    int err;
+198: 
+   :-   if ((wddev->ops->set_timeout == NULL) ||
+   :-       !(wddev->info->options & WDIOF_SETTIMEOUT))
+199:+   if (!wdd->ops->set_timeout || !(wdd->info->options & WDIOF_SETTIMEOUT))
+200:        return -EOPNOTSUPP;
+201: 
+   :-   if (watchdog_timeout_invalid(wddev, timeout))
+202:+   if (watchdog_timeout_invalid(wdd, timeout))
+203:        return -EINVAL;
+204: 
+   :-   mutex_lock(&wddev->lock);
+205:+   mutex_lock(&wdd->lock);
+206: 
+   :-   if (test_bit(WDOG_UNREGISTERED, &wddev->status)) {
+207:+   if (test_bit(WDOG_UNREGISTERED, &wdd->status)) {
+208:        err = -ENODEV;
+209:        goto out_timeout;
+210:    }
+211: 
+   :-   err = wddev->ops->set_timeout(wddev, timeout);
+212:+   err = wdd->ops->set_timeout(wdd, timeout);
+213: 
+214: out_timeout:
+   :-   mutex_unlock(&wddev->lock);
+215:+   mutex_unlock(&wdd->lock);
+216:    return err;
+217: }
+
+
+Removed Lines:
+
+Check drivers/watchdog/watchdog_dev.c at line 194 with
+
+$ sed -n '194,194p' drivers/watchdog/watchdog_dev.c
+
+Check drivers/watchdog/watchdog_dev.c at line 199 with                             
+                                                                                   
+$ sed -n '199,199p' drivers/watchdog/watchdog_dev.c
+static int watchdog_set_timeout(struct watchdog_device *wddev,
+
+Check drivers/watchdog/watchdog_dev.c at line 200 with                             
+                                                                                   
+$ sed -n '200,200p' drivers/watchdog/watchdog_dev.c                                
+        !(wddev->info->options & WDIOF_SETTIMEOUT))                                
+
+Check drivers/watchdog/watchdog_dev.c at line 203  with                            
+                                                                                   
+$ sed -n '203,203p' drivers/watchdog/watchdog_dev.c                                
+    if (watchdog_timeout_invalid(wddev, timeout))                                  
+
+Check drivers/watchdog/watchdog_dev.c at line 206 with                             
+                                                                                   
+$ sed -n '206,206p' drivers/watchdog/watchdog_dev.c                                
+    mutex_lock(&wddev->lock);                                                      
+
+Check drivers/watchdog/watchdog_dev.c at line 208 with                             
+                                                                                   
+$ sed -n '208,208p' drivers/watchdog/watchdog_dev.c                                
+    if (test_bit(WDOG_UNREGISTERED, &wddev->status)) {                             
+
+Check drivers/watchdog/watchdog_dev.c at line 213 with                             
+                                                                                   
+$ sed -n '213,213p' drivers/watchdog/watchdog_dev.c                                
+    err = wddev->ops->set_timeout(wddev, timeout);                                 
+
+Check drivers/watchdog/watchdog_dev.c at line 216 with
+
+$ sed -n '216,216p' drivers/watchdog/watchdog_dev.c
+    mutex_unlock(&wddev->lock);
+
+## Verify patch
+
+@@ -125,155 +125,154 @@ out_start:
+<snip>
+-static int watchdog_set_timeout(struct watchdog_device *wddev,
++static int watchdog_set_timeout(struct watchdog_device *wdd,
+                            unsigned int timeout)
+ {
+    int err;
+
+-   if ((wddev->ops->set_timeout == NULL) ||
+-       !(wddev->info->options & WDIOF_SETTIMEOUT))
++   if (!wdd->ops->set_timeout || !(wdd->info->options & WDIOF_SETTIMEOUT))
+        return -EOPNOTSUPP;
+
+-   if (watchdog_timeout_invalid(wddev, timeout))
++   if (watchdog_timeout_invalid(wdd, timeout))
+        return -EINVAL;
+
+-   mutex_lock(&wddev->lock);
++   mutex_lock(&wdd->lock);
+
+-   if (test_bit(WDOG_UNREGISTERED, &wddev->status)) {
++   if (test_bit(WDOG_UNREGISTERED, &wdd->status)) { 
+        err = -ENODEV;
+        goto out_timeout;
+    }
+
+-   err = wddev->ops->set_timeout(wddev, timeout);
++   err = wdd->ops->set_timeout(wdd, timeout);
+
+ out_timeout:
+-   mutex_unlock(&wddev->lock);
++   mutex_unlock(&wdd->lock);
+    return err;
+ }
+
+
+
+## Result
+
+lines added   : ok
+lines removed : ok
+line numbers  : ok
+

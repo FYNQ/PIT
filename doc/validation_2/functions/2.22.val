@@ -1,0 +1,81 @@
+
+PIT Validation setup - fun: dma_pool_alloc
+
+Author: Markus Kreidl
+Review: Reviewer (if applicable else ----)
+Date: 2018-05-30
+Expires: 000
+Keywords: validation dma_pool_alloc
+Status: initial draft
+Phase: validation
+Ref:
+QA: initial
+Tracking: ?
+Format: ascii text
+
+
+# Validate function
+
+dma_pool_alloc      mm/dmapool.c
+
+## Result PIT
+
+Modified by 1 patch.
+
+- PATCH: 
+
+
+{   'add_cnt_f': 0,
+    'add_cnt_t': 1,
+    'commit': 'd0164adc89f6bb374d304ffcc375c6d2652fe67d',
+    'cu': 'mm/dmapool.c',
+    'fun': 'dma_pool_alloc',
+    'lines_add': [(329, True)],
+    'lines_rm': [(329, True)],
+    'rm_cnt_f': 0,
+    'rm_cnt_t': 1}
+
+
+## Create git diff with showlinenum
+
+$ git diff v4.3 mm/dmapool.c | ./showlinenum.awk > dma_pool_alloc.diff
+
+Extract section for function dma_pool_alloc
+
+@@ -326,7 +326,7 @@ void *dma_pool_alloc(struct dma_pool *pool, gfp_t mem_flags,
+326:    size_t offset;
+327:    void *retval;
+328: 
+   :-   might_sleep_if(mem_flags & __GFP_WAIT);
+329:+   might_sleep_if(gfpflags_allow_blocking(mem_flags));
+330: 
+331:    spin_lock_irqsave(&pool->lock, flags);
+332:    list_for_each_entry(page, &pool->page_list, page_list) {
+
+
+Removed Lines:
+
+Check mm/dmapool.c at line 329 with
+
+$ sed -n '329,329p' mm/dmapool.c
+	might_sleep_if(mem_flags & __GFP_WAIT);
+
+## Verify patch
+
+@@ -326,7 +326,7 @@ void *dma_pool_alloc(struct dma_pool *pool, gfp_t mem_flags,
+    size_t offset;
+    void *retval;
+
+-   might_sleep_if(mem_flags & __GFP_WAIT);
++   might_sleep_if(gfpflags_allow_blocking(mem_flags));
+
+    spin_lock_irqsave(&pool->lock, flags);
+    list_for_each_entry(page, &pool->page_list, page_list) {
+
+
+## Result
+
+lines added   : ok
+lines removed : ok
+line numbers  : ok
+

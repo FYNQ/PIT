@@ -1,0 +1,112 @@
+
+PIT Validation - fun: gfpflags_to_migratetype
+
+Author: Markus Kreidl
+Review: Reviewer (if applicable else ----)
+Date: 2018-04-05
+Expires: 000
+Keywords: setup, configuration, pit
+Status: initial draft
+Phase: validation
+Ref:
+QA: initial
+Tracking: ?
+Format: ascii text
+
+
+# Validate function
+
+gfpflags_to_migratetype       include/linux/gfp.h
+
+## Result PIT
+
+Modified by 1 patch.
+
+- PATCH: 10947-mm-page_alloc-use-masks-and-shifts-when-converting-.patch
+
+{   'add_cnt_f': 0,
+    'add_cnt_t': 4,
+    'commit': '016c13daa5c9e4827eca703e2f0621c131f2cca3',
+    'cu': 'include/linux/gfp.h',
+    'fun': 'gfpflags_to_migratetype',
+    'lines_add': [(259, True), (260, True), (261, True), (267, True)],
+    'lines_rm': [(155, True), (161, True), (162, True)],
+    'rm_cnt_f': 0,
+    'rm_cnt_t': 3}
+
+
+
+## Create git diff with showlinenum
+
+$ git diff v4.3  include/linux/gfp.h | ./showlinenum.awk > gfpflags_to_migratetype.diff
+
+Extract section for function gfpflags_to_migratetype
+
+@@ -50,116 +49,229 @@ struct vm_area_struct;
+<snip>
+257: static inline int gfpflags_to_migratetype(const gfp_t gfp_flags)
+258: {
+   :-   WARN_ON((gfp_flags & GFP_MOVABLE_MASK) == GFP_MOVABLE_MASK);
+259:+   VM_WARN_ON((gfp_flags & GFP_MOVABLE_MASK) == GFP_MOVABLE_MASK);
+260:+   BUILD_BUG_ON((1UL << GFP_MOVABLE_SHIFT) != ___GFP_MOVABLE);
+261:+   BUILD_BUG_ON((___GFP_MOVABLE >> GFP_MOVABLE_SHIFT) != MIGRATE_MOVABLE);
+262: 
+263:    if (unlikely(page_group_by_mobility_disabled))
+264:        return MIGRATE_UNMOVABLE;
+265: 
+266:    /* Group based on mobility */
+   :-   return (((gfp_flags & __GFP_MOVABLE) != 0) << 1) |
+   :-       ((gfp_flags & __GFP_RECLAIMABLE) != 0);
+267:+   return (gfp_flags & GFP_MOVABLE_MASK) >> GFP_MOVABLE_SHIFT;
+268:+}
+<snap>
+
+
+
+Removed Lines:
+
+Check include/linux/gfp.h line 155 with
+
+$ sed -n '155,155p' include/linux/gfp.h
+	WARN_ON((gfp_flags & GFP_MOVABLE_MASK) == GFP_MOVABLE_MASK);
+
+
+Check include/linux/gfp.h line 161 - 162 with
+
+$ sed -n '161,162p' include/linux/gfp.h
+	return (((gfp_flags & __GFP_MOVABLE) != 0) << 1) |
+		((gfp_flags & __GFP_RECLAIMABLE) != 0);
+
+
+## Verify patch
+
+@@ -152,14 +153,15 @@ struct vm_area_struct;
+ /* Convert GFP flags to their corresponding migrate type */
+ static inline int gfpflags_to_migratetype(const gfp_t gfp_flags)
+ {
+-   WARN_ON((gfp_flags & GFP_MOVABLE_MASK) == GFP_MOVABLE_MASK);
++   VM_WARN_ON((gfp_flags & GFP_MOVABLE_MASK) == GFP_MOVABLE_MASK);
++   BUILD_BUG_ON((1UL << GFP_MOVABLE_SHIFT) != ___GFP_MOVABLE);
++   BUILD_BUG_ON((___GFP_MOVABLE >> GFP_MOVABLE_SHIFT) != MIGRATE_MOVABLE);
+
+    if (unlikely(page_group_by_mobility_disabled))
+        return MIGRATE_UNMOVABLE;
+
+    /* Group based on mobility */
+-   return (((gfp_flags & __GFP_MOVABLE) != 0) << 1) |
+-       ((gfp_flags & __GFP_RECLAIMABLE) != 0);
++   return (gfp_flags & GFP_MOVABLE_MASK) >> GFP_MOVABLE_SHIFT;
+ }
+
+## Result
+
+lines added   : ok
+lines removed : ok
+line numbers  : ok
+
+## Comment
+
+Lines add '{' or '}' are filtered.
+
+
+

@@ -1,0 +1,82 @@
+
+PIT Validation setup - fun: show_free_areas
+
+Author: Markus Kreidl
+Review: Reviewer (if applicable else ----)
+Date: 2018-05-30
+Expires: 000
+Keywords: validation show_free_areas
+Status: initial draft
+Phase: validation
+Ref:
+QA: initial
+Tracking: ?
+Format: ascii text
+
+
+# Validate function
+
+show_free_areas                     mm/page_alloc.c
+
+## Result PIT
+
+Modified by 1 patch.
+
+- PATCH: 10980-mm-use-unsigned-int-for-page-order.patch
+
+
+{   'add_cnt_f': 0,
+    'add_cnt_t': 2,
+    'commit': 'd00181b96eb86c914cb327d1de974a1b71366e1b',
+    'cu': 'mm/page_alloc.c',
+    'fun': 'show_free_areas',
+    'lines_add': [(3804, True), (3805, True)],
+    'lines_rm': [(3822, True)],
+    'rm_cnt_f': 0,
+    'rm_cnt_t': 1}
+
+
+## Create git diff with showlinenum
+
+$ git diff v4.3  mm/page_alloc.c  | ./showlinenum.awk > page_alloc.diff
+
+Extract section for function show_free_areas
+
+@@ -3819,7 +3801,8 @@ void show_free_areas(unsigned int filter)
+3801:   }
+3802: 
+3803:   for_each_populated_zone(zone) {
+    :-      unsigned long nr[MAX_ORDER], flags, order, total = 0;
+3804:+      unsigned int order;
+3805:+      unsigned long nr[MAX_ORDER], flags, total = 0;
+3806:       unsigned char types[MAX_ORDER];
+3807: 
+3808:       if (skip_free_areas_node(filter, zone_to_nid(zone)))
+
+Removed Lines:
+
+Check mm/page_alloc.c at line 3822 with
+
+$ sed -n '3822,3822p' mm/page_alloc.c
+			unsigned long nr[MAX_ORDER], flags, order, total = 0;
+
+
+## Verify patch
+
+@@ -3800,7 +3801,8 @@ void show_free_areas(unsigned int filter)
+    }
+
+    for_each_populated_zone(zone) {
+-       unsigned long nr[MAX_ORDER], flags, order, total = 0;
++       unsigned int order;
++       unsigned long nr[MAX_ORDER], flags, total = 0;
+        unsigned char types[MAX_ORDER];
+
+        if (skip_free_areas_node(filter, zone_to_nid(zone)))
+
+## Result
+
+lines added   : ok
+lines removed : ok
+line numbers  : ok
+

@@ -1,0 +1,122 @@
+
+PIT Validation - fun: cgroup_disable
+
+Author: Markus Kreidl
+Review: Reviewer (if applicable else ----)
+Date: 2018-04-05
+Expires: 000
+Keywords: setup, configuration, pit
+Status: initial draft
+Phase: validation
+Ref:
+QA: initial
+Tracking: ?
+Format: ascii text
+
+
+# Validate function
+
+cgroup_disable                      kernel/cgroup.c
+
+## Result PIT
+
+Modified by 2 patches.
+
+- PATCH: 1372-cgroup-replace-cgroup_subsys-disabled-tests-with-cgr.patch
+
+{   'add_cnt_f': 0,
+    'add_cnt_t': 0,
+    'commit': 'fc5ed1e95410ad73b2ab8f33cd90eb3bcf6c98a1',
+    'cu': 'kernel/cgroup.c',
+    'fun': 'cgroup_disable',
+    'lines_add': [],
+    'lines_rm': [(5544, True)],
+    'rm_cnt_f': 0,
+    'rm_cnt_t': 1}
+
+
+- PATCH: 2223-cgroup-fix-too-early-usage-of-static_branch_disable.patch
+
+{   'add_cnt_f': 0,
+    'add_cnt_t': 1,
+    'commit': 'a3e72739b7a7ea225dd11c4096f97123f6427d87',
+    'cu': 'kernel/cgroup.c',
+    'fun': 'cgroup_disable',
+    'lines_add': [(5708, True)],
+    'lines_rm': [(5545, True), (5546, True), (5547, True)],
+    'rm_cnt_f': 0,
+    'rm_cnt_t': 3}
+
+
+## Create git diff with showlinenum
+
+$ git diff v4.3 kernel/cgroup.c | ./showlinenum.awk >  cgroup_disable.diff
+
+Extract section for cgroup_disable
+
+@@ -5540,25 +5705,13 @@ static int __init cgroup_disable(char *str)
+5705:           if (strcmp(token, ss->name) &&
+5706:               strcmp(token, ss->legacy_name))
+5707:               continue;
+    :-
+    :-          ss->disabled = 1;
+    :-          printk(KERN_INFO "Disabling %s control group subsystem\n",
+    :-                 ss->name);
+    :-          break;
+5708:+          cgroup_disable_mask |= 1 << i;
+5709:       }
+5710:   }
+5711:   return 1;
+5712: }
+<snap>
+
+
+Removed Lines:
+
+Check kernel/cgroup.c at lines 5545, 5546, 5547 with
+
+$ sed -n '5545,5547p' kernel/cgroup.c
+			printk(KERN_INFO "Disabling %s control group subsystem\n",
+			       ss->name);
+			break;
+
+
+## Verify patch
+
+- patch_name: 1372-cgroup-replace-cgroup_subsys-disabled-tests-with-cgr.patch
+
+@@ -5508,7 +5523,6 @@ static int __init cgroup_disable(char *str)
+                continue;
+
+            static_branch_disable(cgroup_subsys_enabled_key[i]);
+-           ss->disabled = 1;
+            printk(KERN_INFO "Disabling %s control group subsystem\n",
+                   ss->name);
+            break;
+
+
+
+- patch_name: 2223-cgroup-fix-too-early-usage-of-static_branch_disable.patch
+
+@@ -5595,11 +5601,7 @@ static int __init cgroup_disable(char *str)
+            if (strcmp(token, ss->name) &&
+                strcmp(token, ss->legacy_name))
+                continue;
+-
+-           static_branch_disable(cgroup_subsys_enabled_key[i]);
+-           printk(KERN_INFO "Disabling %s control group subsystem\n",
+-                  ss->name);
+-           break;
++           cgroup_disable_mask |= 1 << i;
+        }
+    }
+    return 1;
+
+
+
+## Result
+
+lines added   : ok
+lines removed : ok
+line numbers  : ok
+

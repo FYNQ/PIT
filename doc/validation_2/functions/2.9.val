@@ -1,0 +1,128 @@
+
+PIT Validation - fun: arpt_do_table
+
+Author: Markus Kreidl
+Review: Reviewer (if applicable else ----)
+Date: 2018-04-05
+Expires: 000
+Keywords: setup, configuration, pit
+Status: initial draft
+Phase: validation
+Ref:
+QA: initial
+Tracking: ?
+Format: ascii text
+
+
+# Validate function
+
+arpt_do_table     net/ipv4/netfilter/arp_tables.c
+
+## Result PIT
+
+Modified by 2 patches.
+
+- PATCH: 1383-inet-netfilter-Remove-hook-from-ip6t_do_table-arp_do.patch
+
+
+{   'add_cnt_f': 0,
+    'add_cnt_t': 1,
+    'commit': '6cb8ff3f1a535b1d8eb5ea318932513d08eb3da7',
+    'cu': 'net/ipv4/netfilter/arp_tables.c',
+    'fun': 'arpt_do_table',
+    'lines_add': [(253, True)],
+    'lines_rm': [(250, False)],
+    'rm_cnt_f': 1,
+    'rm_cnt_t': 0}
+
+
+- PATCH: 1386-netfilter-x_tables-Pass-struct-net-in-xt_action_para.patch
+
+cu: net/ipv4/netfilter/arp_tables.c fun: arpt_do_table
+
+{   'add_cnt_f': 0,
+    'add_cnt_t': 1,
+    'commit': '156c196f6038610770588a708b9e0f7df2ead74a',
+    'cu': 'net/ipv4/netfilter/arp_tables.c',
+    'fun': 'arpt_do_table',
+    'lines_add': [(288, True)],
+    'lines_rm': [],
+    'rm_cnt_f': 0,
+    'rm_cnt_t': 0}
+
+
+## Create git diff with showlinenum
+
+$ git diff v4.3 net/ipv4/netfilter/arp_tables.c | ./showlinenum.awk > arpt_do_table.diff
+
+Extract section for function arpt_do_table 
+
+@@ -247,10 +247,10 @@ struct arpt_entry *arpt_next_entry(const struct arpt_entry * entry)
+247: }
+248: 
+249: unsigned int arpt_do_table(struct sk_buff *skb,
+   :-              unsigned int hook,
+250:               const struct nf_hook_state *state,
+251:               struct xt_table *table)
+252: {
+253:+   unsigned int hook = state->hook;
+254:    static const char nulldevname[IFNAMSIZ]                                    __attribute__((aligned(sizeof(long))));
+255:    unsigned int verdict = NF_DROP;
+256:    const struct arphdr *arp;
+@@ -285,6 +285,7 @@ unsigned int arpt_do_table(struct sk_buff *skb,
+285:     */
+286:    e = get_entry(table_base, private->hook_entry[hook]);
+287: 
+288:+   acpar.net     = state->net;
+289:    acpar.in      = state->in;
+290:    acpar.out     = state->out;
+291:    acpar.hooknum = hook;
+
+
+
+Removed Lines:
+
+No lines removed
+
+## Verify patch
+
+PATCH: 1383-inet-netfilter-Remove-hook-from-ip6t_do_table-arp_do.patch
+
+@@ -247,10 +247,10 @@ struct arpt_entry *arpt_next_entry(const struct arpt_entry * entry)
+ }
+
+ unsigned int arpt_do_table(struct sk_buff *skb,
+-              unsigned int hook,
+               const struct nf_hook_state *state,
+               struct xt_table *table)
+ {
++   unsigned int hook = state->hook;
+    static const char nulldevname[IFNAMSIZ] __attribute__((aligned(sizeof(long))));
+    unsigned int verdict = NF_DROP;
+    const struct arphdr *arp;
+
+
+PATCH: 1386-netfilter-x_tables-Pass-struct-net-in-xt_action_para.patch
+
+@@ -285,6 +285,7 @@ unsigned int arpt_do_table(struct sk_buff *skb,
+     */
+    e = get_entry(table_base, private->hook_entry[hook]);
+
++   acpar.net     = state->net;
+    acpar.in      = state->in;
+    acpar.out     = state->out;
+    acpar.hooknum = hook;
+
+
+## Result
+
+lines added   : ok
+lines removed : ok
+line numbers  : ok
+
+
+## Comment
+
+Modification of declaration is not recognized as a modified instruction but
+is recoreded.
+

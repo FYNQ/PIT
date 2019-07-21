@@ -1,0 +1,4 @@
+# Format
+# version kconfig architecture
+# Rename this file to jobs.txt
+v4.4 i7_x86_64_minimal_defconfig x86_64

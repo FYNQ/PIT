@@ -1,0 +1,120 @@
+
+PIT Validation - fun: __nft_trace_packet
+
+Author: Markus Kreidl
+Review: Reviewer (if applicable else ----)
+Date: 2018-04-05
+Expires: 000
+Keywords: setup, configuration, pit
+Status: initial draft
+Phase: validation
+Ref:
+QA: initial
+Tracking: ?
+Format: ascii text
+
+
+# Validation function
+
+__nft_trace_packet    net/netfilter/nf_tables_core.c
+
+## Result PIT
+
+Modified by 2 patches.
+
+-PATCH: 1385-netfilter-nf_tables-kill-nft_pktinfo.ops.patch
+
+{   'add_cnt_f': 0,
+    'add_cnt_t': 0,
+    'commit': '6aa187f21ca2d8ade791f01fd8fab908b1f27673',
+    'cu': 'net/netfilter/nf_tables_core.c',
+    'fun': '__nft_trace_packet',
+    'lines_add': [],
+    'lines_rm': [(53, True)],
+    'rm_cnt_f': 0,
+    'rm_cnt_t': 1}
+
+
+-PATCH: 1389-netfilter-nf_tables-Use-pkt-net-instead-of-computing.patch
+
+{   'add_cnt_f': 0,
+    'add_cnt_t': 1,
+    'commit': '88182a0e0c665cbd2f01af743c7f88e494924246',
+    'cu': 'net/netfilter/nf_tables_core.c',
+    'fun': '__nft_trace_packet',
+    'lines_add': [(51, True)],
+    'lines_rm': [(51, True)],
+    'rm_cnt_f': 0,
+    'rm_cnt_t': 1}
+
+
+## Create git diff with showlinenum
+
+$ git diff v4.3 net/netfilter/nf_tables_core.c | ./showlinenum.awk > __nft_trace_packet.diff
+
+Extract section for function __nft_trace_packet
+
+48:                    const struct nft_chain *chain,
+49:                    int rulenum, enum nft_trace type)
+50: {
+  :-    struct net *net = dev_net(pkt->in ? pkt->in : pkt->out);
+  :-
+  :-    nf_log_trace(net, pkt->xt.family, pkt->ops->hooknum, pkt->skb, pkt->in,
+51:+    nf_log_trace(pkt->net, pkt->pf, pkt->hook, pkt->skb, pkt->in,
+52:              pkt->out, &trace_loginfo, "TRACE: %s:%s:%s:%u ",
+53:              chain->table->name, chain->name, comments[type],
+54:              rulenum);
+
+
+Removed Lines:
+
+Check security/keys/request_key_auth.c line 51
+
+$ sed -n '51,51p' net/netfilter/nf_tables_core.c
+    struct net *net = dev_net(pkt->in ? pkt->in : pkt->out);
+
+Check security/keys/request_key_auth.c line 53
+
+$ sed -n '53,53p' net/netfilter/nf_tables_core.c
+    nf_log_trace(net, pkt->xt.family, pkt->ops->hooknum, pkt->skb, pkt->in,
+
+
+## Verify patch
+
+Patch: 1385-netfilter-nf_tables-kill-nft_pktinfo.ops.patch
+
+@@ -50,7 +50,7 @@ static void __nft_trace_packet(const struct nft_pktinfo *pkt,
+ {
+    struct net *net = dev_net(pkt->in ? pkt->in : pkt->out);
+
+-   nf_log_trace(net, pkt->xt.family, pkt->ops->hooknum, pkt->skb, pkt->in,
++   nf_log_trace(net, pkt->pf, pkt->hook, pkt->skb, pkt->in,
+             pkt->out, &trace_loginfo, "TRACE: %s:%s:%s:%u ",
+             chain->table->name, chain->name, comments[type],
+             rulenum);
+
+Patch: 1389-netfilter-nf_tables-Use-pkt-net-instead-of-computing.patch
+
+@@ -48,9 +48,7 @@ static void __nft_trace_packet(const struct nft_pktinfo *pkt,
+                   const struct nft_chain *chain,
+                                      int rulenum, enum nft_trace type)
+ {
+     -   struct net *net = dev_net(pkt->in ? pkt->in : pkt->out);
+     -
+     -   nf_log_trace(net, pkt->pf, pkt->hook, pkt->skb, pkt->in,
+     +   nf_log_trace(pkt->net, pkt->pf, pkt->hook, pkt->skb, pkt->in,
+                  pkt->out, &trace_loginfo, "TRACE: %s:%s:%s:%u ",
+                               chain->table->name, chain->name, comments[type],
+                                            rulenum);
+
+
+## Result
+
+lines added   : ok
+lines removed : ok
+line numbers  : ok
+
+
+## Comment:
+
+Empty lines are filtered out.

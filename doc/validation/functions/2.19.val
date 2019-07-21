@@ -1,0 +1,383 @@
+
+PIT Validation - fun: synchronize_sched_expedited_wait
+
+Author: Markus Kreidl
+Review: Reviewer (if applicable else ----)
+Date: 2018-04-05
+Expires: 000
+Keywords: validation function synchronize_sched_expedited_wait
+Status: initial draft
+Phase: validation
+Ref:
+QA: initial
+Tracking: ?
+Format: ascii text
+
+
+# Validation function
+
+cu: kernel/rcu/tree.c fun: synchronize_sched_expedited_wait
+
+## Result PIT
+
+- PATCH: 1486-rcu-Move-synchronize_sched_expedited-to-combining-tr.patch
+
+{   'add_cnt_f': 2,
+    'add_cnt_t': 15,
+    'commit': 'bce5fa12aad148e15efd9bc0015dc4898b6e723b',
+    'cu': 'kernel/rcu/tree.c',
+    'fun': 'synchronize_sched_expedited_wait',
+    'lines_add': [   (3775, True),
+                     (3776, True),
+                     (3777, True),
+                     (3786, False),
+                     (3793, False),
+                     (3798, True),
+                     (3800, True),
+                     (3801, True),
+                     (3804, True),
+                     (3805, True),
+                     (3812, True),
+                     (3816, True),
+                     (3817, True),
+                     (3818, True),
+                     (3819, True),
+                     (3820, True),
+                     (3821, True)],
+    'lines_rm': [   (3475, True),
+                    (3484, False),
+                    (3491, False),
+                    (3496, True),
+                    (3497, True),
+                    (3499, True),
+                    (3500, True),
+                    (3501, True),
+                    (3505, True),
+                    (3506, True),
+                    (3508, True),
+                    (3509, True),
+                    (3510, True)],
+    'rm_cnt_f': 2,
+    'rm_cnt_t': 11}
+
+
+-PATCH: 4941-rcu-Add-online-offline-info-to-expedited-stall-warni.patch
+
+{   'add_cnt_f': 3,
+    'add_cnt_t': 4,
+    'commit': '74611ecb0fc4c850a8f89a744ce99cbf0dd43cb2',
+    'cu': 'kernel/rcu/tree.c',
+    'fun': 'synchronize_sched_expedited_wait',
+    'lines_add': [   (3799, True),
+                     (3802, True),
+                     (3806, True),
+                     (3807, True),
+                     (3808, False),
+                     (3809, False),
+                     (3810, False)],
+    'lines_rm': [(3501, True)],
+    'rm_cnt_f': 0,
+    'rm_cnt_t': 1}
+
+
+-PATCH: 4942-rcu-Add-tasks-to-expedited-stall-warning-messages.patch
+
+{   'add_cnt_f': 0,
+    'add_cnt_t': 1,
+    'commit': 'c58656382e5f2919b05913584f2c54b4f841bc9f',
+    'cu': 'kernel/rcu/tree.c',
+    'fun': 'synchronize_sched_expedited_wait',
+    'lines_add': [(3796, True)],
+    'lines_rm': [(3494, True)],
+    'rm_cnt_f': 0,
+    'rm_cnt_t': 1}
+
+
+
+
+
+
+## Create git diff with showlinenum
+
+$ git diff v4.3 kernel/rcu/tree.c | ./showlinenum.awk > synchronize_sched_expedited_wait.diff
+
+Extract section for function synchronize_sched_expedited_wait
+
+Hunk 1:
+
+@@ -3472,7 +3772,9 @@ static void synchronize_sched_expedited_wait(struct          rcu_state *rsp)
+3772:   int cpu;
+3773:   unsigned long jiffies_stall;
+3774:   unsigned long jiffies_start;
+    :-  struct rcu_data *rdp;
+3775:P1+  unsigned long mask;
+3776:P1+  struct rcu_node *rnp;
+3777:P1+  struct rcu_node *rnp_root = rcu_get_root(rsp);
+3778:   int ret;
+3779: 
+3780:   jiffies_stall = rcu_jiffies_till_stall_check();
+`
+
+Hunk 2:
+
+@@ -3481,33 +3783,43 @@ static void synchronize_sched_expedited_wait(struct        rcu_state *rsp)
+3783:   for (;;) {
+3784:       ret = wait_event_interruptible_timeout(
+3785:               rsp->expedited_wq,
+    :-              !atomic_read(&rsp->expedited_need_qs),
+3786:P1+              sync_rcu_preempt_exp_done(rnp_root),
+3787:               jiffies_stall);
+3788:       if (ret > 0)
+3789:           return;
+3790:       if (ret < 0) {
+3791:           /* Hit a signal, disable CPU stall warnings. */
+3792:           wait_event(rsp->expedited_wq,
+    :-                 !atomic_read(&rsp->expedited_need_qs));
+3793:P1+                 sync_rcu_preempt_exp_done(rnp_root));
+3794:           return;
+3795:       }
+    :-      pr_err("INFO: %s detected expedited stalls on CPUs: {",
+3796:P3+      pr_err("INFO: %s detected expedited stalls on CPUs/tasks: {",
+3797:              rsp->name);
+    :-      for_each_online_cpu(cpu) {
+    :-          rdp = per_cpu_ptr(rsp->rda, cpu);
+    :-
+    :-          if (rdp->exp_done)
+    :-              continue;
+    :-          pr_cont(" %d", cpu);
+3798:P1+      rcu_for_each_leaf_node(rsp, rnp) {
+3799:P2+          (void)rcu_print_task_exp_stall(rnp);
+3800:P1+          mask = 1;
+3801:P1+          for (cpu = rnp->grplo; cpu <= rnp->grphi; cpu++, mask <<= 1) {
+3802:P2+              struct rcu_data *rdp;
+3803:+
+3804:P1+              if (!(rnp->expmask & mask))
+3805:P1+                  continue;
+3806:P2+              rdp = per_cpu_ptr(rsp->rda, cpu);
+3807:P2+              pr_cont(" %d-%c%c%c", cpu,
+3808:P2+                  "O."[cpu_online(cpu)],
+3809:P2+                  "o."[!!(rdp->grpmask & rnp->expmaskinit)],
+3810:P2+                  "N."[!!(rdp->grpmask & rnp->expmaskinitnext)]);
+3811:P1+          }
+3812:P1+          mask <<= 1;
+3813:       }
+3814:       pr_cont(" } %lu jiffies s: %lu\n",
+3815:           jiffies - jiffies_start, rsp->expedited_sequence);
+    :-      for_each_online_cpu(cpu) {
+    :-          rdp = per_cpu_ptr(rsp->rda, cpu);
+    :-
+    :-          if (rdp->exp_done)
+    :-              continue;
+    :-          dump_cpu_task(cpu);
+3816:P1+      rcu_for_each_leaf_node(rsp, rnp) {
+3817:P1+          mask = 1;
+3818:P1+          for (cpu = rnp->grplo; cpu <= rnp->grphi; cpu++, mask <<= 1) {
+3819:P1+              if (!(rnp->expmask & mask))
+3820:P1+                  continue;
+3821:P1+              dump_cpu_task(cpu);
+3822:P1+          }
+3823:       }
+3824:       jiffies_stall = 3 * rcu_jiffies_till_stall_check() + 3;
+ynchronize_sched_expedited_wait825:   }
+
+
+
+Removed Lines:
+
+
+Patch: 1486-rcu-Move-synchronize_sched_expedited-to-combining-tr.patch
+
+
+Check line 3475 in kernel/rcu/tree.c
+
+$ sed -n '3475,3475p' kernel/rcu/tree.c
+    struct rcu_data *rdp;                                                          
+
+
+Check line 3484 in kernel/rcu/tree.c
+
+$ sed -n '3484,3484p' kernel/rcu/tree.c
+                !atomic_read(&rsp->expedited_need_qs),                             
+
+
+Check line 3491 in kernel/rcu/tree.c
+
+$ sed -n '3491,3491p' kernel/rcu/tree.c
+	 			!atomic_read(&rsp->expedited_need_qs));
+
+
+Check lines 3496 to 3497 in kernel/rcu/tree.c
+
+$ sed -n '3496,3497p' kernel/rcu/tree.c
+        for_each_online_cpu(cpu) {
+            rdp = per_cpu_ptr(rsp->rda, cpu);
+
+
+Check lines 3499 to 3501 in kernel/rcu/tree.c
+
+$ sed -n '3499,3501p' kernel/rcu/tree.c
+            if (rdp->exp_done)
+                continue;
+            pr_cont(" %d", cpu);
+
+Check lines 3505 to 3506 in kernel/rcu/tree.c
+
+$ sed -n '3505,3506p' kernel/rcu/tree.c
+        for_each_online_cpu(cpu) {
+            rdp = per_cpu_ptr(rsp->rda, cpu);
+
+Check lines 3508 to 3510 in kernel/rcu/tree.c
+
+$ sed -n '3508,3510p' kernel/rcu/tree.c
+            if (rdp->exp_done)                                                     
+                continue;                                                          
+            dump_cpu_task(cpu);    
+
+
+Patch: 4942-rcu-Add-tasks-to-expedited-stall-warning-messages.patch
+
+$  sed -n '3494,3494p' kernel/rcu/tree.c
+        pr_err("INFO: %s detected expedited stalls on CPUs: {",
+
+Patch: 4944-rcu-Better-hotplug-handling-for-synchronize_sched_ex.patch
+
+No lines removed
+
+
+## Verify patch
+
+PATCH: 1486-rcu-Move-synchronize_sched_expedited-to-combining-tr.patch 
+
+Hunk start: 3642
+
+@@ -3642,19 +3642,77 @@ static int synchronize_sched_expedited_cpu_stop(void *data)
+<snip>
+ static void synchronize_sched_expedited_wait(struct rcu_state *rsp)
+ {
+    int cpu;
+    unsigned long jiffies_stall;
+    unsigned long jiffies_start;
+-   struct rcu_data *rdp;
++   unsigned long mask;
++   struct rcu_node *rnp;
++   struct rcu_node *rnp_root = rcu_get_root(rsp);
+    int ret;
+
+    jiffies_stall = rcu_jiffies_till_stall_check();
+
+Hunk start: 3663
+
+@@ -3663,33 +3721,36 @@ static void synchronize_sched_expedited_wait(struct        rcu_state *rsp)
+    for (;;) {
+        ret = wait_event_interruptible_timeout(
+                rsp->expedited_wq,
+-               !atomic_read(&rsp->expedited_need_qs),
++               sync_rcu_preempt_exp_done(rnp_root),
+                jiffies_stall);
+        if (ret > 0)
+            return;
+        if (ret < 0) {
+            /* Hit a signal, disable CPU stall warnings. */
+            wait_event(rsp->expedited_wq,
+-                  !atomic_read(&rsp->expedited_need_qs));
++                  sync_rcu_preempt_exp_done(rnp_root));
+            return;
+        }
+        pr_err("INFO: %s detected expedited stalls on CPUs: {",
+               rsp->name);
+-       for_each_online_cpu(cpu) {
+-           rdp = per_cpu_ptr(rsp->rda, cpu);
+-
+-           if (rdp->exp_done)
+-               continue;
+-           pr_cont(" %d", cpu);
++       rcu_for_each_leaf_node(rsp, rnp) {
++           mask = 1;
++           for (cpu = rnp->grplo; cpu <= rnp->grphi; cpu++, mask <<= 1) {
++               if (!(rnp->expmask & mask))
++                   continue;
++               pr_cont(" %d", cpu);
++           }
++           mask <<= 1;
+        }
+        pr_cont(" } %lu jiffies s: %lu\n",
+            jiffies - jiffies_start, rsp->expedited_sequence);
+-       for_each_online_cpu(cpu) {
+-           rdp = per_cpu_ptr(rsp->rda, cpu);
+-
+-           if (rdp->exp_done)
+-               continue;
+-           dump_cpu_task(cpu);
++       rcu_for_each_leaf_node(rsp, rnp) {
++           mask = 1;
++           for (cpu = rnp->grplo; cpu <= rnp->grphi; cpu++, mask <<= 1) {
++               if (!(rnp->expmask & mask))
++                   continue;
++               dump_cpu_task(cpu);
++           }
+        }
+        jiffies_stall = 3 * rcu_jiffies_till_stall_check() + 3;
+    }
+
+
+Hunk 3734:
+
+@@ -3734,7 +3734,7 @@ static void synchronize_sched_expedited_wait(struct          rcu_state *rsp)
+                   sync_rcu_preempt_exp_done(rnp_root));
+            return;
+        }
+-       pr_err("INFO: %s detected expedited stalls on CPUs: {",
++       pr_err("INFO: %s detected expedited stalls on CPUs/tasks: {",
+               rsp->name);
+        rcu_for_each_leaf_node(rsp, rnp) {
+            (void)rcu_print_task_exp_stall(rnp);
+
+Hunk 3697:
+
+@@ -3697,9 +3730,28 @@ static void sync_rcu_exp_select_cpus(struct rcu_state *rsp,
+        for (cpu = rnp->grplo; cpu <= rnp->grphi; cpu++, mask <<= 1) {
+            if (!(mask_ofl_ipi & mask))
+                continue;
++retry_ipi:
+            ret = smp_call_function_single(cpu, func, rsp, 0);
+-           if (!ret)
++           if (!ret) {
+                mask_ofl_ipi &= ~mask;
++           } else {
++               /* Failed, raced with offline. */
++               raw_spin_lock_irqsave(&rnp->lock, flags);
++               if (cpu_online(cpu) &&
++                   (rnp->expmask & mask)) {
++                   raw_spin_unlock_irqrestore(&rnp->lock,
++                                  flags);
++                   schedule_timeout_uninterruptible(1);
++                   if (cpu_online(cpu) &&
++                       (rnp->expmask & mask))
++                       goto retry_ipi;
++                   raw_spin_lock_irqsave(&rnp->lock,
++                                 flags);
++               }
++               if (!(rnp->expmask & mask))
++                   mask_ofl_ipi &= ~mask;
++               raw_spin_unlock_irqrestore(&rnp->lock, flags);
++           }
+        }
+        /* Report quiescent states for those that went offline. */
+        mask_ofl_test |= mask_ofl_ipi;
+
+
+## Result
+
+lines added patch 1   : ok
+lines added patch 2   : ok
+lines added patch 2   : ok
+lines removed patch 1 : ok
+lines removed patch 2 : ok
+line numbers  : ok
+
+
+## Comment
+
+Lines added 3786 3793 are modified parameter of a called macro. Macros are
+pre-processed to a single line statement. Thats the reason this line is tagged
+as False.

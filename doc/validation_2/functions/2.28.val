@@ -1,0 +1,79 @@
+
+PIT Validation setup - fun: nf_tables_newchain
+
+Author: Markus Kreidl
+Review: Reviewer (if applicable else ----)
+Date: 2018-05-30
+Expires: 000
+Keywords: validation nf_tables_newchain
+Status: initial draft
+Phase: validation
+Ref:
+QA: initial
+Tracking: ?
+Format: ascii text
+
+
+# Validate function
+
+nf_tables_newchain              net/netfilter/nf_tables_api.c
+
+## Result PIT
+
+Modified by 1 patch.
+
+- PATCH: 7106-netfilter-remove-hook-owner-refcounting.patch
+
+{   'add_cnt_f': 0,
+    'add_cnt_t': 0,
+    'commit': '2ffbceb2b08f8ca0496c54a9ebcd11d25275954e',
+    'cu': 'net/netfilter/nf_tables_api.c',
+    'fun': 'nf_tables_newchain',
+    'lines_add': [],
+    'lines_rm': [(1436, True)],
+    'rm_cnt_f': 0,
+    'rm_cnt_t': 1}
+
+
+
+## Create git diff with showlinenum
+
+$ git diff v4.3 net/netfilter/nf_tables_api.c | ./showlinenum.awk > nf_tables_newchain.diff
+
+Extract section for function nf_tables_newchain
+
+@@ -1433,7 +1433,6 @@ static int nf_tables_newchain(struct sock *nlsk, struct      sk_buff *skb,
+1433:       for (i = 0; i < afi->nops; i++) {
+1434:           ops = &basechain->ops[i];
+1435:           ops->pf     = family;
+    :-          ops->owner  = afi->owner;
+1436:           ops->hooknum    = hooknum;
+1437:           ops->priority   = priority;
+1438:           ops->priv   = chain;
+
+
+Removed Lines:
+
+Check net/netfilter/nf_tables_api.c at line 1436 with
+
+$ sed -n '1436,1436p' net/netfilter/nf_tables_api.c
+			ops->owner	= afi->owner;
+
+
+## Verify patch
+
+@@ -1433,7 +1433,6 @@ static int nf_tables_newchain(struct sock *nlsk, struct      sk_buff *skb,
+        for (i = 0; i < afi->nops; i++) {
+            ops = &basechain->ops[i];
+            ops->pf     = family;
+-           ops->owner  = afi->owner;
+            ops->hooknum    = hooknum;
+            ops->priority   = priority;
+            ops->priv   = chain;
+
+## Result
+
+lines added   : ok
+lines removed : ok
+line numbers  : ok
+

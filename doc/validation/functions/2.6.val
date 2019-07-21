@@ -1,0 +1,127 @@
+
+PIT Validation - fun: perf_pmu_cancel_txn
+
+Author: Markus Kreidl
+Review: Reviewer (if applicable else ----)
+Date: 2018-04-05
+Expires: 000
+Keywords: setup, configuration, pit
+Status: initial draft
+Phase: validation
+Ref:
+QA: initial
+Tracking: ?
+Format: ascii text
+
+
+# Validate function
+
+perf_pmu_cancel_txn    kernel/events/core.c
+
+## Result PIT
+
+Changed by 1 patch.
+
+- PATCH: 0634-perf-core-Add-a-flags-parameter-to-the-PMU-transacti.patch
+
+
+{   'add_cnt_f': 0,
+    'add_cnt_t': 4,
+    'commit': 'fbbe07011581990ef74dfac06dc8511b1a14badb',
+    'cu': 'kernel/events/core.c',
+    'fun': 'perf_pmu_cancel_txn',
+    'lines_add': [(7430, True), (7432, True), (7434, True), (7435, True)],
+    'lines_rm': [],
+    'rm_cnt_f': 0,
+    'rm_cnt_t': 0}
+
+
+
+## Create git diff with showlinenum
+
+$ git diff v4.3 kernel/events/core.c | ./showlinenum.awk > perf_pmu_cancel_txn.diff
+
+Extract section for function perf_pmu_cancel_txn
+
+@@ -7292,24 +7391,49 @@ static void perf_pmu_nop_void(struct pmu *pmu)
+<snip>
+7428: static void perf_pmu_cancel_txn(struct pmu *pmu)
+7429: {
+7430:+  unsigned int flags =  __this_cpu_read(nop_txn_flags);
+7431:+
+7432:+  __this_cpu_write(nop_txn_flags, 0);
+7433:+
+7434:+  if (flags & ~PERF_PMU_TXN_ADD)
+7435:+      return;
+7436:+
+7437:   perf_pmu_enable(pmu);
+7438: }
+
+Removed Lines:
+
+No removed lines.
+
+## Verify patch
+
+@@ -7267,24 +7267,49 @@ static void perf_pmu_nop_void(struct pmu *pmu)
+ {
+ }
+
++static void perf_pmu_nop_txn(struct pmu *pmu, unsigned int flags)
++{
++}
++
+ static int perf_pmu_nop_int(struct pmu *pmu)
+ {
+    return 0;
+ }
+
+-static void perf_pmu_start_txn(struct pmu *pmu)
++DEFINE_PER_CPU(unsigned int, nop_txn_flags);
++
++static void perf_pmu_start_txn(struct pmu *pmu, unsigned int flags)
+ {
++   __this_cpu_write(nop_txn_flags, flags);
++
++   if (flags & ~PERF_PMU_TXN_ADD)
++       return;
++
+    perf_pmu_disable(pmu);
+ }
+
+ static int perf_pmu_commit_txn(struct pmu *pmu)
+ {
++   unsigned int flags = __this_cpu_read(nop_txn_flags);
++
++   __this_cpu_write(nop_txn_flags, 0);
++
++   if (flags & ~PERF_PMU_TXN_ADD)
++       return 0;
++
+    perf_pmu_enable(pmu);
+    return 0;
+ }
+
+ static void perf_pmu_cancel_txn(struct pmu *pmu)
+ {
++   unsigned int flags =  __this_cpu_read(nop_txn_flags);
++
++   __this_cpu_write(nop_txn_flags, 0);
++
++   if (flags & ~PERF_PMU_TXN_ADD)
++       return;
++
+    perf_pmu_enable(pmu);
+ }
+
+
+## Result
+
+lines added   : ok
+lines removed : ok
+line numbers  : ok
+
+
+## Comment
+
+Empty lines added are filtered.

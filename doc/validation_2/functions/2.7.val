@@ -1,0 +1,167 @@
+
+PIT Validation - fun: bstr_printf
+
+Author: Markus Kreidl
+Review: Reviewer (if applicable else ----)
+Date: 2018-04-05
+Expires: 000
+Keywords: setup, configuration, pit
+Status: initial draft
+Phase: validation
+Ref:
+QA: initial
+Tracking: ?
+Format: ascii text
+
+
+# Validate function
+
+bstr_printf       lib/vsprintf.c
+
+## Result PIT
+
+Changed by 2 patches
+
+- PATCH: 10988-lib-vsprintf.c-handle-invalid-format-specifiers-mor.patch
+
+{   'add_cnt_f': 0,
+    'add_cnt_t': 3,
+    'commit': 'b006f19b055f90b73e97086490f95b83095dcc91',
+    'cu': 'lib/vsprintf.c',
+    'fun': 'bstr_printf',
+    'lines_add': [(2368, True), (2369, True), (2413, True)],
+    'lines_rm': [(2378, True)],
+    'rm_cnt_f': 0,
+    'rm_cnt_t': 1}
+
+- PATCH: 10989-lib-vsprintf.c-also-improve-sanity-check-in-bstr_pr.patch
+
+{   'add_cnt_f': 0,
+    'add_cnt_t': 1,
+    'commit': '762abb515415a5a4a37423f4f4ff5770d5a14bac',
+    'cu': 'lib/vsprintf.c',
+    'fun': 'bstr_printf',
+    'lines_add': [(2274, True)],
+    'lines_rm': [(2289, True)],
+    'rm_cnt_f': 0,
+    'rm_cnt_t': 1}
+
+
+## Create git diff with showlinenum
+
+$ git diff v4.3  lib/vsprintf.c | ./showlinenum.awk > bstr_printf.diff
+
+Extract section for function bstr_printf
+
+@@ -2286,7 +2271,7 @@ int bstr_printf(char *buf, size_t size, const char *fmt,     const u32 *bin_buf)
+2271:   char *str, *end;
+2272:   const char *args = (const char *)bin_buf;
+2273: 
+    :-  if (WARNz_ON_ONCE((int) size < 0))
+2274:+  if (WARN_ON_ONCE(size > INT_MAX))
+2275:       return 0;
+2276: 
+2277:   str = buf;
+@@ -2375,12 +2360,14 @@ int bstr_printf(char *buf, size_t size, const char *fmt,   const u32 *bin_buf)
+2360:           break;
+2361: 
+2362:       case FORMAT_TYPE_PERCENT_CHAR:
+    :-      case FORMAT_TYPE_INVALID:
+2363:           if (str < end)
+2364:               *str = '%';
+2365:           ++str;
+2366:           break;
+2367: 
+2368:+      case FORMAT_TYPE_INVALID:
+2369:+          goto out;
+2370:+
+2371:       default: {
+2372:           unsigned long long num;
+2373: 
+@@ -2423,6 +2410,7 @@ int bstr_printf(char *buf, size_t size, const char *fmt,     const u32 *bin_buf)
+2410:       } /* switch(spec.type) */
+2411:   } /* while(*fmt) */
+2412: 
+2413:+out:
+2414:   if (size > 0) {
+2415:       if (str < end)
+2416:           *str = '\0';
+
+
+
+Removed Lines:
+
+Check lib/vsprintf.c at line 2289 with
+
+$ sed -n '2289,2289p' lib/vsprintf.c 
+	if (WARN_ON_ONCE((int) size < 0))
+
+-> removed in:
+   Hunk : 1/1
+   Patch: 10989-lib-vsprintf.c-also-improve-sanity-check-in-bstr_pr.patch
+
+Check lib/vsprintf.c at line 2378
+
+$ sed -n '2378,2378p' lib/vsprintf.c 
+		case FORMAT_TYPE_INVALID:
+
+-> removed in: 
+   Hunk : 1/3 
+   Patch: 10988-lib-vsprintf.c-handle-invalid-format-specifiers-mor.patch
+
+
+## Verify patches
+
+PATCH: 10988-lib-vsprintf.c-handle-invalid-format-specifiers-mor.patch
+
+@@ -2351,12 +2359,14 @@ int bstr_printf(char *buf, size_t size, const char *fmt,   const u32 *bin_buf)
+            break;
+
+        case FORMAT_TYPE_PERCENT_CHAR:
+-       case FORMAT_TYPE_INVALID:
+            if (str < end)
+                *str = '%';
+            ++str;
+            break;
+
++       case FORMAT_TYPE_INVALID:
++           goto out;
++
+        default: {
+            unsigned long long num;
+
+@@ -2399,6 +2409,7 @@ int bstr_printf(char *buf, size_t size, const char *fmt,     const u32 *bin_buf)
+        } /* switch(spec.type) */
+    } /* while(*fmt) */
+
++out:
+    if (size > 0) {
+        if (str < end)
+            *str = '\0';
+
+
+PATCH: 10989-lib-vsprintf.c-also-improve-sanity-check-in-bstr_pr.patch
+
+@@ -2270,7 +2270,7 @@ int bstr_printf(char *buf, size_t size, const char *fmt,     const u32 *bin_buf)
+    char *str, *end;
+    const char *args = (const char *)bin_buf;
+
+-   if (WARN_ON_ONCE((int) size < 0))
++   if (WARN_ON_ONCE(size > INT_MAX))
+        return 0;
+
+    str = buf;
+
+
+
+## Result
+
+lines added   : ok
+lines removed : ok
+line numbers  : ok
+
+
+## Comment
+
+Empty lines added are filtered.
+

@@ -1,0 +1,95 @@
+
+PIT Validation - fun: pci_revert_fw_address
+
+Author: Markus Kreidl
+Review: Reviewer (if applicable else ----)
+Date: 2018-04-05
+Expires: 000
+Keywords: setup, configuration, pit
+Status: initial draft
+Phase: validation
+Ref:
+QA: initial
+Tracking: ?
+Format: ascii text
+
+
+# Validate function
+
+pci_revert_fw_address     drivers/pci/setup-res.c
+
+## Result PIT
+
+Modified by 1 patch.
+
+-PATCH: 1935-PCI-Clear-IORESOURCE_UNSET-when-reverting-to-firmwar.patch
+
+{   'add_cnt_f': 0,
+    'add_cnt_t': 2,
+    'commit': '0b26cd69480d4d99f39042c6621a05af7496b3da',
+    'cu': 'drivers/pci/setup-res.c',
+    'fun': 'pci_revert_fw_address',
+    'lines_add': [(185, True), (203, True)],
+    'lines_rm': [],
+    'rm_cnt_f': 0,
+    'rm_cnt_t': 0}
+
+
+
+## Create git diff with showlinenum
+
+$ git diff v4.3  drivers/pci/setup-res.c | ./showlinenum.awk > pci_revert_fw_address.diff
+
+Extract section for function pci_revert_fw_address
+
+@@ -177,6 +182,7 @@ static int pci_revert_fw_address(struct resource *res, struct  pci_dev *dev,
+182:    end = res->end;
+183:    res->start = fw_addr;
+184:    res->end = res->start + size - 1;
+185:+   res->flags &= ~IORESOURCE_UNSET;
+186: 
+187:    root = pci_find_parent_resource(dev, res);
+188:    if (!root) {
+@@ -194,6 +200,7 @@ static int pci_revert_fw_address(struct resource *res, struct  pci_dev *dev,
+200:             resno, res, conflict->name, conflict);
+201:        res->start = start;
+202:        res->end = end;
+203:+       res->flags |= IORESOURCE_UNSET;
+204:        return -EBUSY;
+205:    }
+206:    return 0;
+
+
+Removed Lines:
+
+Check net/core/sock.c at line 1581 with
+
+No lines removed
+
+## Verify patch
+
+@@ -177,6 +177,7 @@ static int pci_revert_fw_address(struct resource *res, struct  pci_dev *dev,
+    end = res->end;
+    res->start = fw_addr;
+    res->end = res->start + size - 1;
++   res->flags &= ~IORESOURCE_UNSET;
+
+    root = pci_find_parent_resource(dev, res);
+    if (!root) {
+@@ -194,6 +195,7 @@ static int pci_revert_fw_address(struct resource *res, struct  pci_dev *dev,
+             resno, res, conflict->name, conflict);
+        res->start = start;
+        res->end = end;
++       res->flags |= IORESOURCE_UNSET;
+        return -EBUSY;
+    }
+    return 0;
+
+
+## Result
+
+
+lines added   : ok
+lines removed : ok
+line numbers  : ok
+

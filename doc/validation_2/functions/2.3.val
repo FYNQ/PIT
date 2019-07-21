@@ -1,0 +1,83 @@
+
+PIT Validation - fun: ext4_journalled_write_end
+
+Author: Markus Kreidl
+Review: Reviewer (if applicable else ----)
+Date: 2018-04-05
+Expires: 000
+Keywords: setup, configuration, pit
+Status: initial draft
+Phase: validation
+Ref:
+QA: initial
+Tracking: ?
+Format: ascii text
+
+
+# Validate of function
+
+ext4_journalled_write_end           fs/ext4/inode.c
+
+## Result PIT
+
+Changed by 1 patch
+
+- PATCH: 6849-ext4-use-private-version-of-page_zero_new_buffers-fo.patch
+
+{   'add_cnt_f': 0,
+    'add_cnt_t': 1,
+    'commit': 'b90197b655185a11640cce3a0a0bc5d8291b8ad2',
+    'cu': 'fs/ext4/inode.c',
+    'fun': 'ext4_journalled_write_end',
+    'lines_add': [(1242, True)],
+    'lines_rm': [(1210, True)],
+    'rm_cnt_f': 0,
+    'rm_cnt_t': 1}
+
+
+
+## Create git diff with showlinenum
+
+$ git diff v4.3  fs/ext4/inode.c  | ./showlinenum.awk > inode.diff
+
+Extract section for function ext4_journalled_write_end
+
+@@ -1207,7 +1239,7 @@ static int ext4_journalled_write_end(struct file *file,
+1239:       if (copied < len) {
+1240:           if (!PageUptodate(page))
+1241:               copied = 0;
+    :-          page_zero_new_buffers(page, from+copied, to);
+1242:+          zero_new_buffers(page, from+copied, to);
+1243:       }
+1244: 
+1245:       ret = ext4_walk_page_buffers(handle, page_buffers(page), from,
+
+
+
+Removed Lines:
+
+Check mm/page_alloc.c at line 3822 with
+
+$ sed -n '1210,120p' fs/ext4/inode.c
+			unsigned long nr[MAX_ORDER], flags, order, total = 0;
+
+
+## Verify patch
+
+@@ -1207,7 +1239,7 @@ static int ext4_journalled_write_end(struct file *file,
+        if (copied < len) {
+            if (!PageUptodate(page))
+                copied = 0;
+-           page_zero_new_buffers(page, from+copied, to);
++           zero_new_buffers(page, from+copied, to);
+        }
+
+        ret = ext4_walk_page_buffers(handle, page_buffers(page), from,
+
+
+## Result
+
+lines added   : ok
+lines removed : ok
+line numbers  : ok
+

@@ -1,0 +1,83 @@
+
+PIT Validation - fun: sk_clone_lock
+
+Author: Markus Kreidl
+Review: Reviewer (if applicable else ----)
+Date: 2018-04-05
+Expires: 000
+Keywords: setup, configuration, pit
+Status: initial draft
+Phase: validation
+Ref:
+QA: initial
+Tracking: ?
+Format: ascii text
+
+
+# Validate function
+
+sk_clone_lock           net/core/sock.c
+
+## Result PIT
+
+Changed by 1 patch.
+
+- PATCH: 9540-sock-don-t-enable-netstamp-for-af_unix-sockets.patch
+
+{   'add_cnt_f': 0,
+    'add_cnt_t': 2,
+    'commit': '080a270f5adec1ada1357eb66321e7222cc34301',
+    'cu': 'net/core/sock.c',
+    'fun': 'sk_clone_lock',
+    'lines_add': [(1597, True), (1598, True)],
+    'lines_rm': [(1581, True)],
+    'rm_cnt_f': 0,
+    'rm_cnt_t': 1}
+
+
+## Create git diff with showlinenum
+
+$ git diff v4.3  net/core/sock.c | ./showlinenum.awk > sock.diff
+
+Extract section for function sk_clone_lock
+
+@@ -1578,7 +1594,8 @@ struct sock *sk_clone_lock(const struct sock *sk, const      gfp_t priority)
+1594:       if (newsk->sk_prot->sockets_allocated)
+1595:           sk_sockets_allocated_inc(newsk);
+1596: 
+    :-      if (newsk->sk_flags & SK_FLAGS_TIMESTAMP)
+1597:+      if (sock_needs_netstamp(sk) &&
+1598:+          newsk->sk_flags & SK_FLAGS_TIMESTAMP)
+1599:           net_enable_timestamp();
+1600:   }
+1601: out:
+
+
+Removed Lines:
+
+Check net/core/sock.c at line 1581 with
+
+$ sed -n '1581,1581p' net/core/sock.c
+			if (newsk->sk_flags & SK_FLAGS_TIMESTAMP)
+
+
+## Verify patch
+
+@@ -1582,7 +1594,8 @@ struct sock *sk_clone_lock(const struct sock *sk, const      gfp_t priority)
+        if (newsk->sk_prot->sockets_allocated)
+            sk_sockets_allocated_inc(newsk);
+
+-       if (newsk->sk_flags & SK_FLAGS_TIMESTAMP)
++       if (sock_needs_netstamp(sk) &&
++           newsk->sk_flags & SK_FLAGS_TIMESTAMP)
+            net_enable_timestamp();
+    }
+ out:
+
+
+## Result
+
+lines added   : ok
+lines removed : ok
+line numbers  : ok
+
