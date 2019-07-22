@@ -69,13 +69,12 @@ ADD . /home/user/src
 RUN sudo chown -R user:user /home/user
 RUN mkdir /home/user/build && chown -R user:user /home/user/build
 RUN mkdir /home/user/results && chown -R user:user /home/user/results
-
+RUN echo "{}" /home/user/results/done.json && chown -R user:user /home/user/results
 
 USER user
 ENV HOME /home/user
 RUN cd /home/user/src/gcc_plugin && make clean
 RUN cd /home/user/src/gcc_plugin && make
 CMD sudo service ssh restart \
-    && python3 /home/user/src/python/pit_redis.py start \
     && tail -n 100 -f /home/user/info.txt
 
