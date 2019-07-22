@@ -116,5 +116,32 @@ python3 cron_pit.py
 
 ### Results
 
-TBD
 
+PIT generates output in csv and json format.
+
+
+**Summary table**
+
+e.g. v4.3_sum_col_R.csv
+
+| Version | Patches total | Patches applied | Function added | Function removed | Function renamed | Lines added | Lines removed | 
+| ---- | ---- | ---- | ---- | ---- | ---- | ---- | ---- |
+| v4.3 | 11528 | 902 | 340 | 102 | 63 | 6212 | 4878 |
+|v4.4-rc1|335|50|11|5|6|346|392|
+|v4.4-rc2|234|13|0|0|0|38|20|
+|v4.4-rc3|280|42|6|3|1|247|199|
+|v4.4-rc4|217|25|2|2|0|168|149|
+|v4.4-rc5|260|27|5|0|0|154|86|
+|v4.4-rc6|81|2|0|0|0|2|2|
+|v4.4-rc7|64|12|3|1|4|65|67|
+
+
+and:
+
+- v4.3_patches_col_R.csv -> patches total/patches applied
+- v4.3_funs_col_R.csv -> functions added/removed/renamed
+- v4.3_lines_col_R.csv -> lines added/removed
+
+**NOTE**
+
+As the GCC plugin executes after the preprocessor, pachtes affecting Macros cannot be detected.
