@@ -41,7 +41,7 @@ Modify the CPUs variable to use more/less than 4 cores.
 
 # Run
 
-## check\_series.py
+## check_series.py
 
 Used to run a single series of kernel version e.g. v4.4.10 .. v4.4.12
 
@@ -64,7 +64,6 @@ cat ~/build/v4.10.2/i7_x86_minimal_defconfig$/summary_data.json
 
 **Format**
 
-```
 - tag: kernel verion tag
 - lines_rm: lines removed
 - lines_add: lines added
@@ -87,13 +86,13 @@ cat ~/build/v4.10.2/i7_x86_minimal_defconfig$/functions_data.json
 
 [function, lines added, lines removed, file, [list of commits], function - added/modified], [ ...
 ```
-## cron\_pit.py
+## cron_pit.py
 
 ### Configure
 
 ```
 $ cd /home/user/src/python
-$ cp jobs\_example.txt jobs.txt
+$ cp jobs_example.txt jobs.txt
 ```
 
 **Format**
@@ -103,7 +102,7 @@ kernel base version (e.g. v4.9) | kernel config | architecture
 e.g.
 
 ```
-# comment
+# comment can be here!
 v4.4 i7_x86_64_minimal_defconfig x86_64
 
 ```
@@ -111,7 +110,7 @@ v4.4 i7_x86_64_minimal_defconfig x86_64
 ### Run
 
 ```
-python3 cron\_pit.py
+python3 cron_pit.py
 
 ```
 
